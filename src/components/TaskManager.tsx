@@ -6,11 +6,13 @@ import { Input } from '@/components/ui/input';
 import type { StudyTask } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
+const SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'History', 'Computer Science', 'General'];
+
 const TaskManager = () => {
   const [tasks, setTasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
   const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState('');
-  const [subject, setSubject] = useState('');
+  const [subject, setSubject] = useState(SUBJECTS[0]);
   const [dueDate, setDueDate] = useState('');
 
   const addTask = () => {
@@ -18,14 +20,14 @@ const TaskManager = () => {
     const task: StudyTask = {
       id: Date.now().toString(),
       title: title.trim(),
-      subject: subject.trim() || 'General',
+      subject,
       completed: false,
       dueDate: dueDate || new Date().toISOString().split('T')[0],
       createdAt: new Date().toISOString(),
     };
     setTasks((prev) => [task, ...prev]);
     setTitle('');
-    setSubject('');
+    setSubject(SUBJECTS[0]);
     setDueDate('');
     setShowAdd(false);
   };
@@ -69,8 +71,22 @@ const TaskManager = () => {
             <div className="p-4 rounded-lg bg-card border border-border card-shadow space-y-3">
               <Input placeholder="Task title..." value={title} onChange={(e) => setTitle(e.target.value)} />
               <div className="grid grid-cols-2 gap-3">
-                <Input placeholder="Subject" value={subject} onChange={(e) => setSubject(e.target.value)} />
-                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1 block">Subject</label>
+                  <select
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  >
+                    {SUBJECTS.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1 block">Due Date</label>
+                  <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                </div>
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={addTask}>Add Task</Button>
@@ -142,7 +158,10 @@ const TaskManager = () => {
 
       {tasks.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
-          <CheckSquare className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          <svg className="w-8 h-8 mx-auto mb-2 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 11 12 14 22 4" />
+            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+          </svg>
           <p className="text-sm">No tasks yet</p>
           <p className="text-xs">Add your homework and assignments</p>
         </div>
@@ -150,12 +169,5 @@ const TaskManager = () => {
     </div>
   );
 };
-
-const CheckSquare = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 11 12 14 22 4" />
-    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-  </svg>
-);
 
 export default TaskManager;
