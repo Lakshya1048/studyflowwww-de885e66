@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, CheckSquare, Timer, Flame, TrendingUp, ArrowRight } from 'lucide-react';
-import type { TabId, TimeSlot, StudyTask, StudySession, StreakData } from '@/lib/types';
+import { CheckSquare, Timer, TrendingUp, ArrowRight, StickyNote } from 'lucide-react';
+import type { TabId, StudyTask, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface DashboardProps {
@@ -10,13 +10,12 @@ interface DashboardProps {
 
 const Dashboard = ({ onNavigate }: DashboardProps) => {
   const today = new Date().toISOString().split('T')[0];
-  const [slots] = useLocalStorage<TimeSlot[]>(`studyflow-plan-${today}`, []);
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
 
-  const pendingTasks = tasks.filter((t) => !t.completed);
-  const overdueTasks = pendingTasks.filter((t) => t.dueDate < today);
-  const completedSlots = slots.filter((s) => s.completed).length;
+  const todayTasks = tasks.filter((t) => t.dueDate === today);
+  const pendingTasks = todayTasks.filter((t) => !t.completed);
+  const overdueTasks = tasks.filter((t) => !t.completed && t.dueDate < today);
   const todaySessions = sessions.filter((s) => s.date === today);
   const todayMinutes = todaySessions.reduce((a, s) => a + s.duration, 0);
 
@@ -29,15 +28,8 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
 
   const quickCards = [
     {
-      title: "Today's Plan",
-      subtitle: `${completedSlots}/${slots.length} sessions`,
-      icon: BookOpen,
-      tab: 'planner' as TabId,
-      gradient: 'gradient-primary',
-    },
-    {
-      title: 'Pending Tasks',
-      subtitle: `${pendingTasks.length} tasks${overdueTasks.length ? `, ${overdueTasks.length} overdue` : ''}`,
+      title: "Today's Tasks",
+      subtitle: `${pendingTasks.length} pending${overdueTasks.length ? `, ${overdueTasks.length} overdue` : ''}`,
       icon: CheckSquare,
       tab: 'tasks' as TabId,
       gradient: 'gradient-accent',
@@ -50,27 +42,28 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
       gradient: 'gradient-primary',
     },
     {
+      title: 'Notes',
+      subtitle: 'Your study notes',
+      icon: StickyNote,
+      tab: 'notes' as TabId,
+      gradient: 'gradient-accent',
+    },
+    {
       title: 'Progress',
       subtitle: `${todaySessions.length} sessions today`,
       icon: TrendingUp,
       tab: 'progress' as TabId,
-      gradient: 'gradient-accent',
+      gradient: 'gradient-primary',
     },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Greeting */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
         <h1 className="font-display text-3xl font-bold text-foreground">{greeting} 👋</h1>
         <p className="text-muted-foreground mt-1">Ready to study? Here's your overview for today.</p>
       </motion.div>
 
-      {/* Quick navigation cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {quickCards.map((card, i) => (
           <motion.button
@@ -93,52 +86,34 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
         ))}
       </div>
 
-      {/* Today's upcoming sessions */}
-      {slots.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="p-4 rounded-xl bg-card border border-border card-shadow"
-        >
+      {/* Today's pending tasks */}
+      {pendingTasks.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="p-4 rounded-xl bg-card border border-border card-shadow">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-display text-sm font-semibold text-foreground">Upcoming Sessions</h3>
-            <button onClick={() => onNavigate('planner')} className="text-xs text-primary hover:underline">
-              View all
-            </button>
+            <h3 className="font-display text-sm font-semibold text-foreground">Today's Tasks</h3>
+            <button onClick={() => onNavigate('tasks')} className="text-xs text-primary hover:underline">View all</button>
           </div>
           <div className="space-y-2">
-            {slots.filter((s) => !s.completed).slice(0, 3).map((slot) => (
-              <div key={slot.id} className="flex items-center gap-3 text-sm">
+            {pendingTasks.slice(0, 4).map((task) => (
+              <div key={task.id} className="flex items-center gap-3 text-sm">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                <span className="text-foreground font-medium">{slot.subject}</span>
-                <span className="text-muted-foreground text-xs ml-auto">{slot.startTime} – {slot.endTime}</span>
+                <span className="text-foreground font-medium truncate">{task.title}</span>
+                <span className="text-xs text-muted-foreground ml-auto">{task.subject}</span>
               </div>
             ))}
-            {slots.filter((s) => !s.completed).length === 0 && (
-              <p className="text-xs text-muted-foreground">All sessions completed! 🎉</p>
-            )}
           </div>
         </motion.div>
       )}
 
-      {/* Overdue tasks alert */}
       {overdueTasks.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="p-4 rounded-xl bg-destructive/5 border border-destructive/20"
-        >
+        <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }} className="p-4 rounded-xl bg-destructive/5 border border-destructive/20">
           <h3 className="font-display text-sm font-semibold text-destructive mb-2">⚠️ Overdue Tasks</h3>
           <div className="space-y-1">
             {overdueTasks.slice(0, 3).map((task) => (
               <p key={task.id} className="text-xs text-foreground">• {task.title} <span className="text-muted-foreground">(due {task.dueDate})</span></p>
             ))}
           </div>
-          <button onClick={() => onNavigate('tasks')} className="text-xs text-primary hover:underline mt-2">
-            View all tasks →
-          </button>
+          <button onClick={() => onNavigate('tasks')} className="text-xs text-primary hover:underline mt-2">View all tasks →</button>
         </motion.div>
       )}
     </div>

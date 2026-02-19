@@ -2,27 +2,27 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, RotateCcw, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { StudySession } from '@/lib/types';
+import type { StudySession, StudyTask } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
-const SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'History', 'Computer Science', 'Other'];
 const PRESET_TIMES = [15, 25, 30, 45, 60];
 
 const FocusTimer = () => {
   const [sessions, setSessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
+  const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
   const [focusDuration, setFocusDuration] = useLocalStorage<number>('studyflow-focus-duration', 25);
   const [breakDuration, setBreakDuration] = useLocalStorage<number>('studyflow-break-duration', 5);
-  const [subject, setSubject] = useLocalStorage<string>('studyflow-timer-subject', 'Mathematics');
+  const [subject, setSubject] = useLocalStorage<string>('studyflow-timer-subject', '');
+  const [selectedTaskId, setSelectedTaskId] = useLocalStorage<string | null>('studyflow-timer-task', null);
 
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [customMinutes, setCustomMinutes] = useState('');
 
-  // Store end timestamp instead of countdown for tab persistence
   const [endTime, setEndTime] = useLocalStorage<number | null>('studyflow-timer-end', null);
   const [timerMode, setTimerMode] = useLocalStorage<'focus' | 'break'>('studyflow-timer-mode', 'focus');
-  const [timerSubject, setTimerSubject] = useLocalStorage<string>('studyflow-timer-active-subject', 'Mathematics');
+  const [timerSubject, setTimerSubject] = useLocalStorage<string>('studyflow-timer-active-subject', '');
 
   const [timeLeft, setTimeLeft] = useState(() => {
     if (endTime && endTime > Date.now()) {
@@ -33,14 +33,23 @@ const FocusTimer = () => {
 
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
-  // Restore running state from persisted endTime
+  // Get pending tasks for today
+  const today = new Date().toISOString().split('T')[0];
+  const pendingTasks = tasks.filter((t) => !t.completed && t.dueDate === today);
+
+  // When selecting a task, update subject
+  const selectTask = (taskId: string) => {
+    setSelectedTaskId(taskId);
+    const task = tasks.find((t) => t.id === taskId);
+    if (task) setSubject(task.subject);
+  };
+
   useEffect(() => {
     if (endTime && endTime > Date.now()) {
       setIsRunning(true);
       setIsBreak(timerMode === 'break');
       setSubject(timerSubject);
     } else if (endTime && endTime <= Date.now()) {
-      // Timer expired while away
       setEndTime(null);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -59,7 +68,7 @@ const FocusTimer = () => {
         id: Date.now().toString(),
         date: new Date().toISOString().split('T')[0],
         duration: focusDuration,
-        subject,
+        subject: subject || 'General',
       };
       setSessions((prev) => [session, ...prev]);
     }
@@ -100,7 +109,6 @@ const FocusTimer = () => {
 
   const pauseTimer = () => {
     setIsRunning(false);
-    // Save remaining time but clear endTime
     if (endTime) {
       const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
       setTimeLeft(remaining);
@@ -124,8 +132,10 @@ const FocusTimer = () => {
     }
   };
 
-  const todaySessions = sessions.filter((s) => s.date === new Date().toISOString().split('T')[0]);
+  const todaySessions = sessions.filter((s) => s.date === today);
   const todayMinutes = todaySessions.reduce((acc, s) => acc + s.duration, 0);
+
+  const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : null;
 
   return (
     <div className="space-y-6">
@@ -135,7 +145,7 @@ const FocusTimer = () => {
             {isBreak ? '☕ Break Time' : '🎯 Focus Mode'}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {isBreak ? 'Rest your mind' : `Studying: ${subject}`}
+            {isBreak ? 'Rest your mind' : selectedTask ? `Task: ${selectedTask.title}` : subject ? `Studying: ${subject}` : 'Select a task or subject'}
           </p>
         </div>
         <Button size="sm" variant="outline" onClick={() => setShowSettings(!showSettings)}>
@@ -146,18 +156,39 @@ const FocusTimer = () => {
       {/* Settings panel */}
       {showSettings && !isRunning && (
         <div className="p-4 rounded-lg bg-card border border-border card-shadow space-y-4">
+          {/* Task selection */}
+          {pendingTasks.length > 0 && (
+            <div>
+              <label className="text-sm font-medium text-foreground mb-2 block">Select Task</label>
+              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                {pendingTasks.map((task) => (
+                  <button
+                    key={task.id}
+                    onClick={() => selectTask(task.id)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                      selectedTaskId === task.id
+                        ? 'bg-primary/10 border border-primary/30 text-foreground'
+                        : 'bg-secondary/50 hover:bg-secondary text-foreground'
+                    }`}
+                  >
+                    <span className="font-medium">{task.title}</span>
+                    <span className="text-xs text-muted-foreground ml-2">({task.subject})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">Subject</label>
-            <select
+            <label className="text-sm font-medium text-foreground mb-1 block">Or type subject</label>
+            <input
               value={subject}
-              onChange={(e) => setSubject(e.target.value)}
+              onChange={(e) => { setSubject(e.target.value); setSelectedTaskId(null); }}
+              placeholder="e.g. Mathematics"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              {SUBJECTS.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
+            />
           </div>
+
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">Focus Duration</label>
             <div className="flex flex-wrap gap-2">
@@ -206,9 +237,7 @@ const FocusTimer = () => {
               {[3, 5, 10, 15].map((t) => (
                 <button
                   key={t}
-                  onClick={() => {
-                    setBreakDuration(t);
-                  }}
+                  onClick={() => setBreakDuration(t)}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                     breakDuration === t
                       ? 'bg-primary text-primary-foreground'
@@ -227,22 +256,10 @@ const FocusTimer = () => {
       <div className="flex justify-center">
         <div className="relative w-52 h-52">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
-            <circle
-              cx="100"
-              cy="100"
-              r="90"
-              fill="none"
-              stroke="hsl(var(--timer-ring-inactive))"
-              strokeWidth="6"
-            />
+            <circle cx="100" cy="100" r="90" fill="none" stroke="hsl(var(--timer-ring-inactive))" strokeWidth="6" />
             <motion.circle
-              cx="100"
-              cy="100"
-              r="90"
-              fill="none"
-              stroke="hsl(var(--timer-ring))"
-              strokeWidth="6"
-              strokeLinecap="round"
+              cx="100" cy="100" r="90" fill="none"
+              stroke="hsl(var(--timer-ring))" strokeWidth="6" strokeLinecap="round"
               strokeDasharray={circumference}
               animate={{ strokeDashoffset }}
               transition={{ duration: 0.5 }}
@@ -252,20 +269,14 @@ const FocusTimer = () => {
             <span className="font-display text-4xl font-bold text-foreground tabular-nums">
               {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
             </span>
-            <span className="text-xs text-muted-foreground mt-1">
-              {isBreak ? 'break' : 'focus'}
-            </span>
+            <span className="text-xs text-muted-foreground mt-1">{isBreak ? 'break' : 'focus'}</span>
           </div>
         </div>
       </div>
 
       {/* Controls */}
       <div className="flex justify-center gap-3">
-        <Button
-          size="lg"
-          onClick={() => (isRunning ? pauseTimer() : startTimer())}
-          className="gap-2 min-w-[120px]"
-        >
+        <Button size="lg" onClick={() => (isRunning ? pauseTimer() : startTimer())} className="gap-2 min-w-[120px]">
           {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
           {isRunning ? 'Pause' : 'Start'}
         </Button>

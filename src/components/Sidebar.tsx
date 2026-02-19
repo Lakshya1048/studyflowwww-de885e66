@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { BookOpen, CheckSquare, Timer, BarChart3, LayoutDashboard, Flame, StickyNote } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { CheckSquare, Timer, BarChart3, LayoutDashboard, Flame, StickyNote, Moon, Sun } from 'lucide-react';
 import type { TabId, StreakData } from '@/lib/types';
 
 interface SidebarProps {
@@ -11,7 +11,6 @@ interface SidebarProps {
 
 const navItems: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'planner', label: 'Planner', icon: BookOpen },
   { id: 'tasks', label: 'Tasks', icon: CheckSquare },
   { id: 'timer', label: 'Focus Timer', icon: Timer },
   { id: 'notes', label: 'Notes', icon: StickyNote },
@@ -20,13 +19,21 @@ const navItems: { id: TabId; label: string; icon: React.ElementType }[] = [
 
 const Sidebar = ({ activeTab, onTabChange, streak }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+
+  const toggleTheme = () => {
+    document.documentElement.classList.toggle('dark');
+    const isDark = document.documentElement.classList.contains('dark');
+    setDark(isDark);
+    localStorage.setItem('studyflow-theme', isDark ? 'dark' : 'light');
+  };
 
   return (
     <aside className={`flex flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 ${collapsed ? 'w-16' : 'w-60'}`}>
       {/* Logo */}
       <div className="flex items-center gap-2.5 p-4 border-b border-sidebar-border">
         <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
-          <BookOpen className="w-4 h-4 text-primary-foreground" />
+          <span className="text-primary-foreground text-xs font-bold">S</span>
         </div>
         {!collapsed && (
           <motion.span
@@ -81,6 +88,15 @@ const Sidebar = ({ activeTab, onTabChange, streak }: SidebarProps) => {
           );
         })}
       </nav>
+
+      {/* Theme toggle */}
+      <button
+        onClick={toggleTheme}
+        className="mx-3 mb-1 p-2 rounded-lg text-muted-foreground hover:bg-sidebar-accent flex items-center gap-2 text-sm transition-colors"
+      >
+        {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+        {!collapsed && <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>}
+      </button>
 
       {/* Collapse toggle */}
       <button

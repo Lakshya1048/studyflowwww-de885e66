@@ -1,33 +1,42 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Check, AlertCircle, Trash2 } from 'lucide-react';
+import { Plus, Check, AlertCircle, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { StudyTask } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
-const SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'History', 'Computer Science', 'General'];
-
 const TaskManager = () => {
   const [tasks, setTasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
   const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState('');
-  const [subject, setSubject] = useState(SUBJECTS[0]);
+  const [subject, setSubject] = useState('');
   const [dueDate, setDueDate] = useState('');
+
+  // Date navigation
+  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+
+  const changeDate = (offset: number) => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + offset);
+    setSelectedDate(d.toISOString().split('T')[0]);
+  };
+
+  const isToday = selectedDate === new Date().toISOString().split('T')[0];
 
   const addTask = () => {
     if (!title.trim()) return;
     const task: StudyTask = {
       id: Date.now().toString(),
       title: title.trim(),
-      subject,
+      subject: subject.trim() || 'General',
       completed: false,
-      dueDate: dueDate || new Date().toISOString().split('T')[0],
+      dueDate: dueDate || selectedDate,
       createdAt: new Date().toISOString(),
     };
     setTasks((prev) => [task, ...prev]);
     setTitle('');
-    setSubject(SUBJECTS[0]);
+    setSubject('');
     setDueDate('');
     setShowAdd(false);
   };
@@ -41,9 +50,14 @@ const TaskManager = () => {
   };
 
   const today = new Date().toISOString().split('T')[0];
-  const pendingTasks = tasks.filter((t) => !t.completed);
-  const completedTasks = tasks.filter((t) => t.completed);
-  const overdueTasks = pendingTasks.filter((t) => t.dueDate < today);
+  const dateTasks = tasks.filter((t) => t.dueDate === selectedDate);
+  const pendingTasks = dateTasks.filter((t) => !t.completed);
+  const completedTasks = dateTasks.filter((t) => t.completed);
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    return d.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
 
   return (
     <div className="space-y-4">
@@ -51,13 +65,35 @@ const TaskManager = () => {
         <div>
           <h2 className="font-display text-xl font-bold text-foreground">Tasks</h2>
           <p className="text-sm text-muted-foreground">
-            {pendingTasks.length} pending{overdueTasks.length > 0 && `, ${overdueTasks.length} overdue`}
+            {pendingTasks.length} pending for {isToday ? 'today' : formatDate(selectedDate)}
           </p>
         </div>
         <Button size="sm" onClick={() => setShowAdd(!showAdd)} className="gap-1.5">
           <Plus className="w-4 h-4" />
           Add Task
         </Button>
+      </div>
+
+      {/* Date navigator */}
+      <div className="flex items-center justify-center gap-3 p-2 rounded-lg bg-card border border-border card-shadow">
+        <button onClick={() => changeDate(-1)} className="p-1 rounded hover:bg-muted transition-colors">
+          <ChevronLeft className="w-5 h-5 text-foreground" />
+        </button>
+        <div className="text-center min-w-[140px]">
+          <p className="text-sm font-semibold text-foreground">{formatDate(selectedDate)}</p>
+          {isToday && <p className="text-xs text-primary font-medium">Today</p>}
+        </div>
+        <button onClick={() => changeDate(1)} className="p-1 rounded hover:bg-muted transition-colors">
+          <ChevronRight className="w-5 h-5 text-foreground" />
+        </button>
+        {!isToday && (
+          <button
+            onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+            className="text-xs text-primary hover:underline ml-1"
+          >
+            Today
+          </button>
+        )}
       </div>
 
       <AnimatePresence>
@@ -70,23 +106,14 @@ const TaskManager = () => {
           >
             <div className="p-4 rounded-lg bg-card border border-border card-shadow space-y-3">
               <Input placeholder="Task title..." value={title} onChange={(e) => setTitle(e.target.value)} />
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1 block">Subject</label>
-                  <select
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    {SUBJECTS.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1 block">Due Date</label>
-                  <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-                </div>
+              <Input
+                placeholder="Subject (e.g. Mathematics, Physics...)"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+              />
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">Due Date</label>
+                <Input type="date" value={dueDate || selectedDate} onChange={(e) => setDueDate(e.target.value)} />
               </div>
               <div className="flex gap-2">
                 <Button size="sm" onClick={addTask}>Add Task</Button>
@@ -101,7 +128,7 @@ const TaskManager = () => {
       <div className="space-y-2">
         <AnimatePresence>
           {pendingTasks.map((task) => {
-            const isOverdue = task.dueDate < today;
+            const isOverdue = task.dueDate < today && !task.completed;
             return (
               <motion.div
                 key={task.id}
@@ -120,10 +147,11 @@ const TaskManager = () => {
                   <p className="text-sm font-medium text-foreground truncate">{task.title}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-xs px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground">{task.subject}</span>
-                    <span className={`text-xs ${isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-                      {isOverdue && <AlertCircle className="w-3 h-3 inline mr-0.5" />}
-                      Due {task.dueDate}
-                    </span>
+                    {isOverdue && (
+                      <span className="text-xs text-destructive font-medium flex items-center gap-0.5">
+                        <AlertCircle className="w-3 h-3" /> Overdue
+                      </span>
+                    )}
                   </div>
                 </div>
                 <button onClick={() => deleteTask(task.id)} className="text-muted-foreground hover:text-destructive transition-colors">
@@ -139,7 +167,7 @@ const TaskManager = () => {
       {completedTasks.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Completed ({completedTasks.length})</p>
-          {completedTasks.slice(0, 5).map((task) => (
+          {completedTasks.map((task) => (
             <div key={task.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
               <button
                 onClick={() => toggleTask(task.id)}
@@ -156,14 +184,14 @@ const TaskManager = () => {
         </div>
       )}
 
-      {tasks.length === 0 && (
+      {dateTasks.length === 0 && (
         <div className="text-center py-8 text-muted-foreground">
           <svg className="w-8 h-8 mx-auto mb-2 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="9 11 12 14 22 4" />
             <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
           </svg>
-          <p className="text-sm">No tasks yet</p>
-          <p className="text-xs">Add your homework and assignments</p>
+          <p className="text-sm">No tasks for {isToday ? 'today' : formatDate(selectedDate)}</p>
+          <p className="text-xs">Add a task to get started</p>
         </div>
       )}
     </div>
