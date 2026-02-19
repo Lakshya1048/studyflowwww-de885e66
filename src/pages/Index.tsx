@@ -1,37 +1,54 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Sidebar from '@/components/Sidebar';
 import Dashboard from '@/components/Dashboard';
-import StudyPlanner from '@/components/StudyPlanner';
 import TaskManager from '@/components/TaskManager';
 import FocusTimer from '@/components/FocusTimer';
 import NotesManager from '@/components/NotesManager';
 import ProgressTracker from '@/components/ProgressTracker';
 import type { TabId, StreakData, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Moon, Sun } from 'lucide-react';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  // Initialize theme from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('studyflow-theme');
+    if (saved === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else if (saved === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
+
   const streak = useMemo<StreakData>(() => {
     const dates = [...new Set(sessions.map((s) => s.date))].sort().reverse();
     let currentStreak = 0;
     const today = new Date();
-    for (let i = 0; i < dates.length; i++) {
-      const expected = new Date(today);
-      expected.setDate(expected.getDate() - i);
-      const expectedStr = expected.toISOString().split('T')[0];
-      if (dates.includes(expectedStr)) {
+    const todayStr = today.toISOString().split('T')[0];
+
+    // Check if studied today
+    const studiedToday = dates.includes(todayStr);
+
+    // Start checking from today (or yesterday if not studied today)
+    const startOffset = studiedToday ? 0 : 1;
+
+    for (let i = startOffset; ; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(checkDate.getDate() - i);
+      const checkStr = checkDate.toISOString().split('T')[0];
+      if (dates.includes(checkStr)) {
         currentStreak++;
-      } else if (i === 0) {
-        // Today hasn't been studied yet, check from yesterday
-        continue;
       } else {
         break;
       }
     }
+
     return {
       currentStreak,
       longestStreak: currentStreak,
@@ -46,10 +63,15 @@ const Index = () => {
     setMobileMenuOpen(false);
   };
 
+  const toggleMobileTheme = () => {
+    document.documentElement.classList.toggle('dark');
+    const isDark = document.documentElement.classList.contains('dark');
+    localStorage.setItem('studyflow-theme', isDark ? 'dark' : 'light');
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return <Dashboard onNavigate={handleTabChange} />;
-      case 'planner': return <StudyPlanner />;
       case 'tasks': return <TaskManager />;
       case 'timer': return <FocusTimer />;
       case 'notes': return <NotesManager />;
@@ -72,16 +94,22 @@ const Index = () => {
           </div>
           <span className="font-display font-bold text-foreground">StudyFlow</span>
         </div>
-        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-foreground">
-          {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={toggleMobileTheme} className="text-foreground p-1">
+            <Moon className="w-5 h-5 dark:hidden" />
+            <Sun className="w-5 h-5 hidden dark:block" />
+          </button>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-foreground">
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu overlay */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-40 bg-background/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}>
           <div className="absolute top-14 left-0 right-0 bg-card border-b border-border p-2 space-y-1" onClick={(e) => e.stopPropagation()}>
-            {(['dashboard', 'planner', 'tasks', 'timer', 'notes', 'progress'] as TabId[]).map((tab) => (
+            {(['dashboard', 'tasks', 'timer', 'notes', 'progress'] as TabId[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabChange(tab)}
