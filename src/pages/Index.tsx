@@ -71,8 +71,8 @@ const Index = () => {
       case 'tasks': return <TaskManager />;
       case 'timer': return <FocusTimer />;
       case 'notes': return <NotesManager />;
-      case 'doubts': return <DoubtSolver />;
       case 'progress': return <ProgressTracker />;
+      default: return null;
     }
   };
 
@@ -120,7 +120,10 @@ const Index = () => {
 
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto p-6 pt-20 md:pt-6">
-          {renderContent()}
+          {activeTab !== 'doubts' && renderContent()}
+          <div className={activeTab === 'doubts' ? '' : 'hidden'}>
+            <DoubtSolver />
+          </div>
         </div>
       </main>
     </div>
