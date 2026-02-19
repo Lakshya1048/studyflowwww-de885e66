@@ -5,6 +5,7 @@ import TaskManager from '@/components/TaskManager';
 import FocusTimer from '@/components/FocusTimer';
 import NotesManager from '@/components/NotesManager';
 import ProgressTracker from '@/components/ProgressTracker';
+import DoubtSolver from '@/components/DoubtSolver';
 import type { TabId, StreakData, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { Menu, X, Moon, Sun } from 'lucide-react';
@@ -14,7 +15,6 @@ const Index = () => {
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Initialize theme from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('studyflow-theme');
     if (saved === 'dark') {
@@ -31,11 +31,7 @@ const Index = () => {
     let currentStreak = 0;
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-
-    // Check if studied today
     const studiedToday = dates.includes(todayStr);
-
-    // Start checking from today (or yesterday if not studied today)
     const startOffset = studiedToday ? 0 : 1;
 
     for (let i = startOffset; ; i++) {
@@ -75,18 +71,17 @@ const Index = () => {
       case 'tasks': return <TaskManager />;
       case 'timer': return <FocusTimer />;
       case 'notes': return <NotesManager />;
+      case 'doubts': return <DoubtSolver />;
       case 'progress': return <ProgressTracker />;
     }
   };
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
-      {/* Desktop sidebar */}
       <div className="hidden md:flex">
         <Sidebar activeTab={activeTab} onTabChange={handleTabChange} streak={streak} />
       </div>
 
-      {/* Mobile header */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center">
@@ -105,11 +100,10 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Mobile menu overlay */}
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-40 bg-background/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}>
           <div className="absolute top-14 left-0 right-0 bg-card border-b border-border p-2 space-y-1" onClick={(e) => e.stopPropagation()}>
-            {(['dashboard', 'tasks', 'timer', 'notes', 'progress'] as TabId[]).map((tab) => (
+            {(['dashboard', 'tasks', 'timer', 'notes', 'doubts', 'progress'] as TabId[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabChange(tab)}
@@ -117,14 +111,13 @@ const Index = () => {
                   activeTab === tab ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'
                 }`}
               >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === 'doubts' ? 'Doubt Solver' : tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Main content */}
       <main className="flex-1 overflow-y-auto">
         <div className="max-w-2xl mx-auto p-6 pt-20 md:pt-6">
           {renderContent()}
