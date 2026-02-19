@@ -13,9 +13,13 @@ import {
 
 const BASE_DIR = 'D:\\StudyFlow';
 
+// Module-level persistence — survives re-renders and effect chains
+let _savedDirHandle: FileSystemDirectoryHandle | null = null;
+let _savedActiveSubject: string | null = null;
+
 const PdfManager = () => {
   const [subjects, setSubjects] = useState<string[]>([]);
-  const [activeSubject, setActiveSubject] = useState<string | null>(null);
+  const [activeSubject, _setActiveSubject] = useState<string | null>(_savedActiveSubject);
   const [pdfs, setPdfs] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingPdfs, setLoadingPdfs] = useState(false);
@@ -28,9 +32,23 @@ const PdfManager = () => {
   const api = typeof window !== 'undefined' ? window.api : undefined;
   const isElectron = !!api;
 
+  // Wrap setActiveSubject to also persist to module-level
+  const setActiveSubject = useCallback((val: string | null | ((prev: string | null) => string | null)) => {
+    _setActiveSubject((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      _savedActiveSubject = next;
+      return next;
+    });
+  }, []);
+
   // ── Fallback for browser (File System Access API) ────────────────
-  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [dirHandle, _setDirHandle] = useState<FileSystemDirectoryHandle | null>(_savedDirHandle);
   const [browserSupported] = useState(() => 'showDirectoryPicker' in window);
+
+  const setDirHandle = useCallback((handle: FileSystemDirectoryHandle | null) => {
+    _savedDirHandle = handle;
+    _setDirHandle(handle);
+  }, []);
 
   // Load subjects
   const loadSubjects = useCallback(async () => {
