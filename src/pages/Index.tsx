@@ -4,6 +4,7 @@ import Dashboard from '@/components/Dashboard';
 import TaskManager from '@/components/TaskManager';
 import FocusTimer from '@/components/FocusTimer';
 import NotesManager from '@/components/NotesManager';
+import PdfManager from '@/components/PdfManager';
 import ProgressTracker from '@/components/ProgressTracker';
 import DoubtSolver from '@/components/DoubtSolver';
 import type { TabId, StreakData, StudySession } from '@/lib/types';
@@ -71,6 +72,7 @@ const Index = () => {
       case 'tasks': return <TaskManager />;
       case 'timer': return <FocusTimer />;
       case 'notes': return <NotesManager />;
+      case 'pdfs': return <PdfManager />;
       case 'progress': return <ProgressTracker />;
       default: return null;
     }
@@ -103,7 +105,7 @@ const Index = () => {
       {mobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-40 bg-background/80 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}>
           <div className="absolute top-14 left-0 right-0 bg-card border-b border-border p-2 space-y-1" onClick={(e) => e.stopPropagation()}>
-            {(['dashboard', 'tasks', 'timer', 'notes', 'doubts', 'progress'] as TabId[]).map((tab) => (
+            {(['dashboard', 'tasks', 'timer', 'notes', 'pdfs', 'doubts', 'progress'] as TabId[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => handleTabChange(tab)}
