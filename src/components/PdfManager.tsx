@@ -1,275 +1,440 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderOpen, Upload, FileText, Trash2, ExternalLink, FolderCog, AlertCircle } from 'lucide-react';
+import {
+  FolderOpen, Upload, FileText, Trash2, Eye, Plus,
+  FolderPlus, ChevronRight, AlertCircle, X, Loader2
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogFooter, DialogDescription
+} from '@/components/ui/dialog';
 
-interface PdfMeta {
-  name: string;
-  size: number;
-  lastModified: number;
-}
+const BASE_DIR = 'D:\\StudyFlow';
 
 const PdfManager = () => {
-  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
-  const [pdfs, setPdfs] = useState<PdfMeta[]>([]);
+  const [subjects, setSubjects] = useState<string[]>([]);
+  const [activeSubject, setActiveSubject] = useState<string | null>(null);
+  const [pdfs, setPdfs] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingPdfs, setLoadingPdfs] = useState(false);
+  const [viewingPdf, setViewingPdf] = useState<string | null>(null);
+  const [viewPdfUrl, setViewPdfUrl] = useState<string | null>(null);
+  const [newSubjectName, setNewSubjectName] = useState('');
+  const [showNewSubject, setShowNewSubject] = useState(false);
   const [error, setError] = useState('');
-  const [supported] = useState(() => 'showDirectoryPicker' in window);
 
-  // Try to restore saved directory handle from IndexedDB
-  useEffect(() => {
-    if (!supported) return;
-    restoreHandle();
-  }, [supported]);
+  const api = typeof window !== 'undefined' ? window.api : undefined;
+  const isElectron = !!api;
 
-  const restoreHandle = async () => {
+  // ── Fallback for browser (File System Access API) ────────────────
+  const [dirHandle, setDirHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const [browserSupported] = useState(() => 'showDirectoryPicker' in window);
+
+  // Load subjects
+  const loadSubjects = useCallback(async () => {
+    setLoading(true);
+    setError('');
     try {
-      const db = await openDB();
-      const tx = db.transaction('handles', 'readonly');
-      const store = tx.objectStore('handles');
-      const req = store.get('pdf-folder');
-      req.onsuccess = async () => {
-        const handle = req.result as FileSystemDirectoryHandle | undefined;
-        if (handle) {
-          // Verify permission
-          const perm = await (handle as any).queryPermission({ mode: 'readwrite' });
-          if (perm === 'granted') {
-            setDirHandle(handle);
-            loadPdfs(handle);
+      if (isElectron && api) {
+        const subs = await api.getSubjects();
+        setSubjects(subs);
+        if (subs.length > 0 && !activeSubject) setActiveSubject(subs[0]);
+      } else if (dirHandle) {
+        const folders: string[] = [];
+        for await (const entry of (dirHandle as any).values()) {
+          if (entry.kind === 'directory') folders.push(entry.name);
+        }
+        folders.sort((a, b) => a.localeCompare(b));
+        setSubjects(folders);
+        if (folders.length > 0 && !activeSubject) setActiveSubject(folders[0]);
+      }
+    } catch {
+      setError('Could not load subjects.');
+    }
+    setLoading(false);
+  }, [api, isElectron, dirHandle, activeSubject]);
+
+  // Load PDFs for active subject
+  const loadPdfs = useCallback(async () => {
+    if (!activeSubject) { setPdfs([]); return; }
+    setLoadingPdfs(true);
+    try {
+      if (isElectron && api) {
+        const files = await api.getPdfs(activeSubject);
+        setPdfs(files);
+      } else if (dirHandle) {
+        const subDir = await dirHandle.getDirectoryHandle(activeSubject);
+        const files: string[] = [];
+        for await (const entry of (subDir as any).values()) {
+          if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
+            files.push(entry.name);
           }
         }
-      };
+        files.sort((a, b) => a.localeCompare(b));
+        setPdfs(files);
+      }
     } catch {
-      // IndexedDB not available or handle expired
+      setError(`Could not load PDFs for ${activeSubject}.`);
     }
-  };
+    setLoadingPdfs(false);
+  }, [activeSubject, api, isElectron, dirHandle]);
 
-  const openDB = (): Promise<IDBDatabase> => {
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open('studyflow-fs', 1);
-      req.onupgradeneeded = () => {
-        req.result.createObjectStore('handles');
-      };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-  };
+  useEffect(() => { loadSubjects(); }, [loadSubjects]);
+  useEffect(() => { loadPdfs(); }, [loadPdfs]);
 
-  const saveHandle = async (handle: FileSystemDirectoryHandle) => {
+  // ── Actions ──────────────────────────────────────────────────────
+  const createSubject = async () => {
+    const name = newSubjectName.trim();
+    if (!name) return;
     try {
-      const db = await openDB();
-      const tx = db.transaction('handles', 'readwrite');
-      tx.objectStore('handles').put(handle, 'pdf-folder');
+      if (isElectron && api) {
+        await api.createSubject(name);
+      } else if (dirHandle) {
+        await dirHandle.getDirectoryHandle(name, { create: true });
+      }
+      setNewSubjectName('');
+      setShowNewSubject(false);
+      await loadSubjects();
+      setActiveSubject(name);
     } catch {
-      // ignore
+      setError(`Could not create subject "${name}".`);
     }
   };
 
+  const deleteSubject = async (name: string) => {
+    if (!confirm(`Delete "${name}" and all its PDFs?`)) return;
+    try {
+      if (isElectron && api) {
+        await api.deleteSubject(name);
+      } else if (dirHandle) {
+        await (dirHandle as any).removeEntry(name, { recursive: true });
+      }
+      if (activeSubject === name) setActiveSubject(null);
+      await loadSubjects();
+    } catch {
+      setError(`Could not delete "${name}".`);
+    }
+  };
+
+  const addPdf = async () => {
+    if (!activeSubject) return;
+    try {
+      if (isElectron && api) {
+        const paths = await api.showOpenDialog({
+          filters: [{ name: 'PDF Files', extensions: ['pdf'] }],
+          properties: ['openFile', 'multiSelections'],
+        });
+        for (const p of paths) {
+          await api.addPdf(activeSubject, p);
+        }
+      } else if (dirHandle) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.pdf';
+        input.multiple = true;
+        await new Promise<void>((resolve) => {
+          input.onchange = async () => {
+            if (!input.files) { resolve(); return; }
+            const subDir = await dirHandle.getDirectoryHandle(activeSubject, { create: true });
+            for (const file of Array.from(input.files)) {
+              const fh = await subDir.getFileHandle(file.name, { create: true });
+              const writable = await (fh as any).createWritable();
+              await writable.write(file);
+              await writable.close();
+            }
+            resolve();
+          };
+          input.click();
+        });
+      }
+      await loadPdfs();
+    } catch {
+      setError('Could not add PDF.');
+    }
+  };
+
+  const openPdf = async (fileName: string) => {
+    if (!activeSubject) return;
+    try {
+      if (isElectron && api) {
+        const fullPath = await api.getPdfPath(activeSubject, fileName);
+        setViewingPdf(fileName);
+        setViewPdfUrl(`file://${fullPath}`);
+      } else if (dirHandle) {
+        const subDir = await dirHandle.getDirectoryHandle(activeSubject);
+        const fh = await subDir.getFileHandle(fileName);
+        const file = await fh.getFile();
+        const url = URL.createObjectURL(file);
+        setViewingPdf(fileName);
+        setViewPdfUrl(url);
+      }
+    } catch {
+      setError(`Could not open ${fileName}.`);
+    }
+  };
+
+  const deletePdf = async (fileName: string) => {
+    if (!activeSubject) return;
+    if (!confirm(`Delete "${fileName}"?`)) return;
+    try {
+      if (isElectron && api) {
+        await api.deletePdf(activeSubject, fileName);
+      } else if (dirHandle) {
+        const subDir = await dirHandle.getDirectoryHandle(activeSubject);
+        await (subDir as any).removeEntry(fileName);
+      }
+      await loadPdfs();
+    } catch {
+      setError(`Could not delete ${fileName}.`);
+    }
+  };
+
+  const closeViewer = () => {
+    if (viewPdfUrl && !isElectron) URL.revokeObjectURL(viewPdfUrl);
+    setViewingPdf(null);
+    setViewPdfUrl(null);
+  };
+
+  // ── Browser fallback: pick folder ────────────────────────────────
   const pickFolder = async () => {
     try {
       const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
       setDirHandle(handle);
-      await saveHandle(handle);
-      await loadPdfs(handle);
-      setError('');
     } catch (e: any) {
-      if (e.name !== 'AbortError') {
-        setError('Could not access folder. Please try again.');
-      }
+      if (e.name !== 'AbortError') setError('Could not access folder.');
     }
   };
 
-  const loadPdfs = async (handle: FileSystemDirectoryHandle) => {
-    setLoading(true);
-    const files: PdfMeta[] = [];
-    try {
-      for await (const entry of (handle as any).values()) {
-        if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
-          const file: File = await entry.getFile();
-          files.push({ name: file.name, size: file.size, lastModified: file.lastModified });
-        }
-      }
-      files.sort((a, b) => b.lastModified - a.lastModified);
-      setPdfs(files);
-    } catch {
-      setError('Could not read folder. Please re-select it.');
-      setDirHandle(null);
-    }
-    setLoading(false);
-  };
-
-  const uploadPdf = async () => {
-    if (!dirHandle) return;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.pdf';
-    input.multiple = true;
-    input.onchange = async () => {
-      if (!input.files) return;
-      setLoading(true);
-      for (const file of Array.from(input.files)) {
-        try {
-          const fileHandle = await dirHandle.getFileHandle(file.name, { create: true });
-          const writable = await (fileHandle as any).createWritable();
-          await writable.write(file);
-          await writable.close();
-        } catch {
-          setError(`Failed to save ${file.name}`);
-        }
-      }
-      await loadPdfs(dirHandle);
-    };
-    input.click();
-  };
-
-  const openPdf = async (name: string) => {
-    if (!dirHandle) return;
-    try {
-      const fileHandle = await dirHandle.getFileHandle(name);
-      const file = await fileHandle.getFile();
-      const url = URL.createObjectURL(file);
-      window.open(url, '_blank');
-      // Revoke after a delay so the tab can load
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-    } catch {
-      setError(`Could not open ${name}`);
-    }
-  };
-
-  const deletePdf = async (name: string) => {
-    if (!dirHandle) return;
-    try {
-      await (dirHandle as any).removeEntry(name);
-      await loadPdfs(dirHandle);
-    } catch {
-      setError(`Could not delete ${name}`);
-    }
-  };
-
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  if (!supported) {
+  // ── No Electron + no folder picked ──────────────────────────────
+  if (!isElectron && !dirHandle) {
     return (
       <div className="space-y-4">
         <h2 className="font-display text-xl font-bold text-foreground">PDF Manager</h2>
-        <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
-          <div>
-            <p className="text-sm font-medium text-foreground">Browser Not Supported</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Your browser doesn't support local folder access. Please use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong> for this feature.
-            </p>
+        {!browserSupported ? (
+          <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-foreground">Browser Not Supported</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Use <strong>Google Chrome</strong> or <strong>Microsoft Edge</strong>, or run this app as a desktop executable.
+              </p>
+            </div>
           </div>
-        </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-16 border-2 border-dashed border-border rounded-xl"
+          >
+            <FolderOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-40" />
+            <p className="text-sm text-muted-foreground mb-1">Select your StudyFlow folder</p>
+            <p className="text-xs text-muted-foreground mb-5">
+              Pick <code className="bg-muted px-1.5 py-0.5 rounded text-xs">D:\StudyFlow</code> or any folder with subject sub-folders
+            </p>
+            <Button onClick={pickFolder} className="gap-2">
+              <FolderOpen className="w-4 h-4" />
+              Select Folder
+            </Button>
+          </motion.div>
+        )}
       </div>
     );
   }
 
+  // ── Main UI ─────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-xl font-bold text-foreground">PDF Manager</h2>
-          <p className="text-sm text-muted-foreground">
-            {dirHandle ? `${pdfs.length} PDF${pdfs.length !== 1 ? 's' : ''} in folder` : 'Select a folder to get started'}
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {isElectron ? BASE_DIR : 'Local folder'} &middot; {subjects.length} subject{subjects.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={pickFolder} className="gap-1.5">
-            <FolderCog className="w-4 h-4" />
-            {dirHandle ? 'Change' : 'Pick'} Folder
+        {!isElectron && (
+          <Button size="sm" variant="outline" onClick={pickFolder} className="gap-1.5 text-xs">
+            <FolderOpen className="w-3.5 h-3.5" />
+            Change
           </Button>
-          {dirHandle && (
-            <Button size="sm" onClick={uploadPdf} className="gap-1.5">
-              <Upload className="w-4 h-4" />
-              Add PDF
-            </Button>
-          )}
-        </div>
+        )}
       </div>
 
       {error && (
         <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
           <button onClick={() => setError('')} className="ml-auto text-xs underline">dismiss</button>
         </div>
       )}
 
-      {!dirHandle && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center py-12 border-2 border-dashed border-border rounded-xl"
-        >
-          <FolderOpen className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-50" />
-          <p className="text-sm text-muted-foreground mb-1">No folder selected</p>
-          <p className="text-xs text-muted-foreground mb-4">Pick a folder on your PC to store and manage PDFs</p>
-          <Button onClick={pickFolder} className="gap-2">
-            <FolderOpen className="w-4 h-4" />
-            Select Folder
-          </Button>
-        </motion.div>
-      )}
-
-      {dirHandle && !loading && pdfs.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground">
-          <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
-          <p className="text-sm">No PDFs in this folder</p>
-          <p className="text-xs">Click "Add PDF" to save PDFs here</p>
-        </div>
-      )}
-
-      {loading && (
-        <div className="text-center py-8 text-muted-foreground text-sm">Loading PDFs...</div>
-      )}
-
-      <AnimatePresence>
-        {pdfs.map((pdf) => (
-          <motion.div
-            key={pdf.name}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-3 p-3 rounded-lg bg-card border border-border card-shadow hover:bg-muted/30 transition-colors"
-          >
-            <FileText className="w-5 h-5 text-destructive flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{pdf.name}</p>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-xs text-muted-foreground">{formatSize(pdf.size)}</span>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(pdf.lastModified).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
+      <div className="flex gap-4 min-h-[420px]">
+        {/* ── Sidebar: Subjects ────────────────────────────────── */}
+        <div className="w-48 shrink-0 rounded-xl bg-card border border-border card-shadow overflow-hidden flex flex-col">
+          <div className="p-3 border-b border-border flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Subjects</span>
             <button
-              onClick={() => openPdf(pdf.name)}
+              onClick={() => setShowNewSubject(true)}
               className="text-muted-foreground hover:text-primary transition-colors"
-              title="Open PDF"
+              title="New subject"
             >
-              <ExternalLink className="w-4 h-4" />
+              <FolderPlus className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => deletePdf(pdf.name)}
-              className="text-muted-foreground hover:text-destructive transition-colors"
-              title="Delete PDF"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+          </div>
 
-      {dirHandle && (
-        <p className="text-xs text-muted-foreground text-center pt-2">
-          PDFs are saved directly to your PC — not in the browser.
-        </p>
-      )}
+          <div className="flex-1 overflow-y-auto p-1.5 space-y-0.5">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : subjects.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">No subjects yet</p>
+            ) : (
+              subjects.map((sub) => (
+                <div key={sub} className="group flex items-center">
+                  <button
+                    onClick={() => setActiveSubject(sub)}
+                    className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left truncate ${
+                      activeSubject === sub
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-foreground hover:bg-muted/60'
+                    }`}
+                  >
+                    <FolderOpen className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{sub}</span>
+                    {activeSubject === sub && <ChevronRight className="w-3 h-3 ml-auto shrink-0" />}
+                  </button>
+                  <button
+                    onClick={() => deleteSubject(sub)}
+                    className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive transition-all"
+                    title="Delete subject"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* ── Main: PDF Grid ──────────────────────────────────── */}
+        <div className="flex-1 min-w-0">
+          {!activeSubject ? (
+            <div className="h-full flex items-center justify-center rounded-xl border-2 border-dashed border-border">
+              <p className="text-sm text-muted-foreground">Select a subject to view PDFs</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-lg font-semibold text-foreground">{activeSubject}</h3>
+                <Button size="sm" onClick={addPdf} className="gap-1.5">
+                  <Upload className="w-4 h-4" />
+                  Add PDF
+                </Button>
+              </div>
+
+              {loadingPdfs ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : pdfs.length === 0 ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-center py-16 rounded-xl border-2 border-dashed border-border"
+                >
+                  <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-40" />
+                  <p className="text-sm text-muted-foreground">No PDFs in {activeSubject}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Click "Add PDF" to get started</p>
+                </motion.div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <AnimatePresence>
+                    {pdfs.map((pdf) => (
+                      <motion.div
+                        key={pdf}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="group relative bg-card border border-border rounded-xl p-4 card-shadow hover:card-shadow-hover transition-shadow flex flex-col items-center text-center"
+                      >
+                        <div className="w-12 h-14 rounded-lg bg-destructive/10 flex items-center justify-center mb-3">
+                          <FileText className="w-6 h-6 text-destructive" />
+                        </div>
+                        <p className="text-xs font-medium text-foreground truncate w-full" title={pdf}>
+                          {pdf.replace(/\.pdf$/i, '')}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">.pdf</p>
+
+                        <div className="flex gap-1.5 mt-3 w-full">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 h-7 text-xs gap-1"
+                            onClick={() => openPdf(pdf)}
+                          >
+                            <Eye className="w-3 h-3" />
+                            Open
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => deletePdf(pdf)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── New Subject Dialog ─────────────────────────────────── */}
+      <Dialog open={showNewSubject} onOpenChange={setShowNewSubject}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>New Subject</DialogTitle>
+            <DialogDescription>Create a new subject folder for your PDFs.</DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="e.g. Chemistry"
+            value={newSubjectName}
+            onChange={(e) => setNewSubjectName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && createSubject()}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewSubject(false)}>Cancel</Button>
+            <Button onClick={createSubject} disabled={!newSubjectName.trim()}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── PDF Viewer Modal ──────────────────────────────────── */}
+      <Dialog open={!!viewingPdf} onOpenChange={(open) => !open && closeViewer()}>
+        <DialogContent className="sm:max-w-4xl h-[85vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-5 py-3 border-b border-border shrink-0">
+            <DialogTitle className="text-sm truncate pr-8">{viewingPdf}</DialogTitle>
+            <DialogDescription className="sr-only">PDF Viewer</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 min-h-0">
+            {viewPdfUrl && (
+              <iframe
+                src={viewPdfUrl}
+                className="w-full h-full border-0 rounded-b-lg"
+                title={viewingPdf || 'PDF Viewer'}
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
