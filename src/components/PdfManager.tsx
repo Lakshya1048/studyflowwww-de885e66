@@ -16,11 +16,13 @@ const BASE_DIR = 'D:\\StudyFlow';
 // Module-level persistence — survives re-renders and effect chains
 let _savedDirHandle: FileSystemDirectoryHandle | null = null;
 let _savedActiveSubject: string | null = null;
+let _savedSubjects: string[] = [];
+let _savedPdfs: string[] = [];
 
 const PdfManager = () => {
-  const [subjects, setSubjects] = useState<string[]>([]);
+  const [subjects, _setSubjects] = useState<string[]>(_savedSubjects);
   const [activeSubject, _setActiveSubject] = useState<string | null>(_savedActiveSubject);
-  const [pdfs, setPdfs] = useState<string[]>([]);
+  const [pdfs, _setPdfs] = useState<string[]>(_savedPdfs);
   const [loading, setLoading] = useState(false);
   const [loadingPdfs, setLoadingPdfs] = useState(false);
   const [viewingPdf, setViewingPdf] = useState<string | null>(null);
@@ -32,7 +34,23 @@ const PdfManager = () => {
   const api = typeof window !== 'undefined' ? window.api : undefined;
   const isElectron = !!api;
 
-  // Wrap setActiveSubject to also persist to module-level
+  // Wrap setters to also persist to module-level
+  const setSubjects = useCallback((val: string[] | ((prev: string[]) => string[])) => {
+    _setSubjects((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      _savedSubjects = next;
+      return next;
+    });
+  }, []);
+
+  const setPdfs = useCallback((val: string[] | ((prev: string[]) => string[])) => {
+    _setPdfs((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      _savedPdfs = next;
+      return next;
+    });
+  }, []);
+
   const setActiveSubject = useCallback((val: string | null | ((prev: string | null) => string | null)) => {
     _setActiveSubject((prev) => {
       const next = typeof val === 'function' ? val(prev) : val;
