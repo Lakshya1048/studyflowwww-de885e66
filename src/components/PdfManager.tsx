@@ -202,8 +202,14 @@ const PdfManager = () => {
     try {
       const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
       setDirHandle(handle);
+      setError('');
     } catch (e: any) {
-      if (e.name !== 'AbortError') setError('Could not access folder.');
+      if (e.name === 'AbortError') return;
+      if (e.name === 'SecurityError') {
+        setError('Folder picker is blocked in this preview. Open the app in a new tab (click the external link icon top-right), then try again.');
+      } else {
+        setError(`Could not access folder: ${e.message || 'unknown error'}`);
+      }
     }
   };
 
