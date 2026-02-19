@@ -40,7 +40,7 @@ const PdfManager = () => {
       if (isElectron && api) {
         const subs = await api.getSubjects();
         setSubjects(subs);
-        if (subs.length > 0 && !activeSubject) setActiveSubject(subs[0]);
+        setActiveSubject((prev) => (prev ? prev : subs.length > 0 ? subs[0] : null));
       } else if (dirHandle) {
         const folders: string[] = [];
         for await (const entry of (dirHandle as any).values()) {
@@ -48,13 +48,13 @@ const PdfManager = () => {
         }
         folders.sort((a, b) => a.localeCompare(b));
         setSubjects(folders);
-        if (folders.length > 0 && !activeSubject) setActiveSubject(folders[0]);
+        setActiveSubject((prev) => (prev ? prev : folders.length > 0 ? folders[0] : null));
       }
     } catch {
       setError('Could not load subjects.');
     }
     setLoading(false);
-  }, [api, isElectron, dirHandle, activeSubject]);
+  }, [api, isElectron, dirHandle]);
 
   // Load PDFs for active subject
   const loadPdfs = useCallback(async () => {
