@@ -160,22 +160,21 @@ const FocusTimer = () => {
           {pendingTasks.length > 0 && (
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">Select Task</label>
-              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+              <select
+                value={selectedTaskId || ''}
+                onChange={(e) => {
+                  if (e.target.value) selectTask(e.target.value);
+                  else { setSelectedTaskId(null); }
+                }}
+                className="w-full rounded-md border border-input bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="">— Pick a task —</option>
                 {pendingTasks.map((task) => (
-                  <button
-                    key={task.id}
-                    onClick={() => selectTask(task.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                      selectedTaskId === task.id
-                        ? 'bg-primary/10 border border-primary/30 text-foreground'
-                        : 'bg-secondary/50 hover:bg-secondary text-foreground'
-                    }`}
-                  >
-                    <span className="font-medium">{task.title}</span>
-                    <span className="text-xs text-muted-foreground ml-2">({task.subject})</span>
-                  </button>
+                  <option key={task.id} value={task.id}>
+                    {task.title} ({task.subject})
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
           )}
 
