@@ -6,15 +6,70 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+type Attachment = {
+  name: string;
+  mimeType: string;
+  base64: string;
+};
+
+type IncomingMessage = {
+  role: "user" | "assistant";
+  content: string;
+  attachments?: Attachment[];
+};
+
+// Build the multimodal content array for a user message
+function buildUserContent(text: string, attachments?: Attachment[]) {
+  if (!attachments || attachments.length === 0) {
+    return text;
+  }
+
+  // Gemini vision format: array of content parts
+  const parts: unknown[] = [];
+
+  for (const att of attachments) {
+    if (att.mimeType.startsWith("image/")) {
+      parts.push({
+        type: "image_url",
+        image_url: { url: `data:${att.mimeType};base64,${att.base64}` },
+      });
+    } else if (att.mimeType === "application/pdf") {
+      // Send PDF as a file part (Gemini supports inline PDF via base64)
+      parts.push({
+        type: "image_url",
+        image_url: { url: `data:application/pdf;base64,${att.base64}` },
+      });
+    }
+  }
+
+  if (text) {
+    parts.push({ type: "text", text });
+  }
+
+  return parts;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { messages } = await req.json();
+    const { messages }: { messages: IncomingMessage[] } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    // Map messages to the format the AI gateway expects
+    const formattedMessages = messages.map((m) => {
+      if (m.role === "user") {
+        return {
+          role: "user",
+          content: buildUserContent(m.content, m.attachments),
+        };
+      }
+      // assistant messages are always plain text
+      return { role: "assistant", content: m.content };
+    });
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -46,9 +101,10 @@ Rules:
 - Mention the formula/concept used at each step
 - Be encouraging and supportive like a friend
 - If the question is unclear, ask what they mean in simple words
-- Keep explanations short and to the point, no unnecessary filler`,
+- Keep explanations short and to the point, no unnecessary filler
+- When the user shares an image or PDF, carefully read/analyse it and solve the problem shown in it`,
             },
-            ...messages,
+            ...formattedMessages,
           ],
           stream: true,
         }),
