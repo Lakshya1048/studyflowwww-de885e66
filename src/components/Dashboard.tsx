@@ -3,12 +3,14 @@ import { motion } from 'framer-motion';
 import { CheckSquare, Timer, TrendingUp, ArrowRight, FileText } from 'lucide-react';
 import type { TabId, StudyTask, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import type { Profile } from '@/hooks/useAuth';
 
 interface DashboardProps {
   onNavigate: (tab: TabId) => void;
+  profile: Profile | null;
 }
 
-const Dashboard = ({ onNavigate }: DashboardProps) => {
+const Dashboard = ({ onNavigate, profile }: DashboardProps) => {
   const today = new Date().toISOString().split('T')[0];
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
@@ -60,7 +62,9 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <h1 className="font-display text-3xl font-bold text-foreground">{greeting} 👋</h1>
+        <h1 className="font-display text-3xl font-bold text-foreground">
+          {greeting}{profile?.display_name ? `, ${profile.display_name}` : ''} 👋
+        </h1>
         <p className="text-muted-foreground mt-1">Ready to study? Here's your overview for today.</p>
       </motion.div>
 

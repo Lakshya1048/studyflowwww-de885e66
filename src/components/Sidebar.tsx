@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckSquare, Timer, BarChart3, LayoutDashboard, Flame, Moon, Sun, MessageCircleQuestion, FileText } from 'lucide-react';
+import { CheckSquare, Timer, BarChart3, LayoutDashboard, Flame, Moon, Sun, MessageCircleQuestion, FileText, Settings, User } from 'lucide-react';
 import type { TabId, StreakData } from '@/lib/types';
+import type { Profile } from '@/hooks/useAuth';
 
 interface SidebarProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   streak: StreakData;
+  onOpenSettings: () => void;
+  profile: Profile | null;
 }
 
 const navItems: { id: TabId; label: string; icon: React.ElementType }[] = [
@@ -18,7 +21,7 @@ const navItems: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'progress', label: 'Progress', icon: BarChart3 },
 ];
 
-const Sidebar = ({ activeTab, onTabChange, streak }: SidebarProps) => {
+const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
 
@@ -90,6 +93,25 @@ const Sidebar = ({ activeTab, onTabChange, streak }: SidebarProps) => {
         })}
       </nav>
 
+      {/* User + Settings */}
+      <button
+        onClick={onOpenSettings}
+        className={`mx-3 mb-1 p-2.5 rounded-xl hover:bg-sidebar-accent flex items-center gap-2.5 transition-colors ${collapsed ? 'justify-center' : ''}`}
+      >
+        <div className="w-7 h-7 rounded-full gradient-primary flex items-center justify-center flex-shrink-0">
+          <User className="w-3.5 h-3.5 text-primary-foreground" />
+        </div>
+        {!collapsed && (
+          <div className="flex-1 min-w-0 text-left">
+            <p className="text-xs font-semibold text-sidebar-foreground truncate">
+              {profile?.display_name || 'My Account'}
+            </p>
+            <p className="text-xs text-muted-foreground">Settings</p>
+          </div>
+        )}
+        {!collapsed && <Settings className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />}
+      </button>
+
       {/* Theme toggle */}
       <button
         onClick={toggleTheme}
@@ -111,3 +133,4 @@ const Sidebar = ({ activeTab, onTabChange, streak }: SidebarProps) => {
 };
 
 export default Sidebar;
+
