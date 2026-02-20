@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckSquare, Timer, BarChart3, LayoutDashboard, Flame, StickyNote, Moon, Sun, MessageCircleQuestion, FileText } from 'lucide-react';
+import { CheckSquare, Timer, BarChart3, LayoutDashboard, Flame, Moon, Sun, MessageCircleQuestion, FileText } from 'lucide-react';
 import type { TabId, StreakData } from '@/lib/types';
 
 interface SidebarProps {
@@ -13,7 +13,6 @@ const navItems: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'tasks', label: 'Tasks', icon: CheckSquare },
   { id: 'timer', label: 'Focus Timer', icon: Timer },
-  { id: 'notes', label: 'Notes', icon: StickyNote },
   { id: 'pdfs', label: 'PDFs', icon: FileText },
   { id: 'doubts', label: 'Doubt Solver', icon: MessageCircleQuestion },
   { id: 'progress', label: 'Progress', icon: BarChart3 },
