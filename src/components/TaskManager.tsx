@@ -13,16 +13,23 @@ const TaskManager = () => {
   const [subject, setSubject] = useState('');
   const [dueDate, setDueDate] = useState('');
 
-  // Date navigation
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
-
-  const changeDate = (offset: number) => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + offset);
-    setSelectedDate(d.toISOString().split('T')[0]);
+  const getLocalDateStr = (date: Date = new Date()) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   };
 
-  const isToday = selectedDate === new Date().toISOString().split('T')[0];
+  // Date navigation
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateStr());
+
+  const changeDate = (offset: number) => {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + offset);
+    setSelectedDate(getLocalDateStr(d));
+  };
+
+  const isToday = selectedDate === getLocalDateStr();
 
   const addTask = () => {
     if (!title.trim()) return;
@@ -49,7 +56,7 @@ const TaskManager = () => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateStr();
   const dateTasks = tasks.filter((t) => t.dueDate === selectedDate);
   const pendingTasks = dateTasks.filter((t) => !t.completed);
   const completedTasks = dateTasks.filter((t) => t.completed);
@@ -88,7 +95,7 @@ const TaskManager = () => {
         </button>
         {!isToday && (
           <button
-            onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+            onClick={() => setSelectedDate(getLocalDateStr())}
             className="text-xs text-primary hover:underline ml-1"
           >
             Today
