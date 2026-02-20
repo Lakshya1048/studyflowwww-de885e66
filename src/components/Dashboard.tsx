@@ -54,7 +54,34 @@ const Dashboard = ({ onNavigate, profile }: DashboardProps) => {
   const hasWarning = notifications.some((n) => n.type === 'warn');
 
   const quickCards = [
-    // ... keep existing code
+    {
+      title: "Today's Tasks",
+      subtitle: `${pendingTasks.length} pending${overdueTasks.length ? `, ${overdueTasks.length} overdue` : ''}`,
+      icon: CheckSquare,
+      tab: 'tasks' as TabId,
+      gradient: 'gradient-accent',
+    },
+    {
+      title: 'Focus Timer',
+      subtitle: `${todayMinutes}m studied today`,
+      icon: Timer,
+      tab: 'timer' as TabId,
+      gradient: 'gradient-primary',
+    },
+    {
+      title: 'PDF Manager',
+      subtitle: 'Your study PDFs',
+      icon: FileText,
+      tab: 'pdfs' as TabId,
+      gradient: 'gradient-accent',
+    },
+    {
+      title: 'Progress',
+      subtitle: `${todaySessions.length} sessions today`,
+      icon: TrendingUp,
+      tab: 'progress' as TabId,
+      gradient: 'gradient-primary',
+    },
   ];
 
   return (

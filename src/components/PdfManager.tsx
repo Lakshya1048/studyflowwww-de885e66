@@ -286,22 +286,13 @@ const PdfManager = () => {
               <FolderOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-40" />
               <p className="text-sm font-medium text-foreground mb-1">Select your StudyFlow folder</p>
               <p className="text-xs text-muted-foreground mb-5">
-                Pick <code className="bg-muted px-1.5 py-0.5 rounded text-xs">D:\StudyFlow</code> or any folder with subject sub-folders
+                Choose a custom folder to organize and store your study materials
               </p>
               <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
                 <Button onClick={pickFolder} className="gap-2">
                   <FolderOpen className="w-4 h-4" />
                   Select Folder
                 </Button>
-                <a
-                  href={window.location.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  Open in new tab (fixes iframe restrictions)
-                </a>
               </div>
             </div>
           </motion.div>
