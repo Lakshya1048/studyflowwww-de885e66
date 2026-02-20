@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { CheckSquare, Timer, TrendingUp, ArrowRight, StickyNote } from 'lucide-react';
+import { CheckSquare, Timer, TrendingUp, ArrowRight, FileText } from 'lucide-react';
 import type { TabId, StudyTask, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
@@ -42,10 +42,10 @@ const Dashboard = ({ onNavigate }: DashboardProps) => {
       gradient: 'gradient-primary',
     },
     {
-      title: 'Notes',
-      subtitle: 'Your study notes',
-      icon: StickyNote,
-      tab: 'notes' as TabId,
+      title: 'PDF Manager',
+      subtitle: 'Your study PDFs',
+      icon: FileText,
+      tab: 'pdfs' as TabId,
       gradient: 'gradient-accent',
     },
     {
