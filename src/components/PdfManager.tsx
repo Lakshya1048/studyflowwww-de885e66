@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  FolderOpen, Upload, FileText, Trash2, Eye, Plus,
-  FolderPlus, ChevronRight, AlertCircle, X, Loader2
+  FolderOpen, Upload, FileText, Trash2, Eye,
+  FolderPlus, ChevronRight, AlertCircle, Loader2, ExternalLink, Search
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +30,8 @@ const PdfManager = () => {
   const [newSubjectName, setNewSubjectName] = useState('');
   const [showNewSubject, setShowNewSubject] = useState(false);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const api = typeof window !== 'undefined' ? window.api : undefined;
   const isElectron = !!api;
@@ -154,8 +156,30 @@ const PdfManager = () => {
     }
   };
 
+  // Handle file selection from the hidden input
+  const handleFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!activeSubject || !dirHandle) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    try {
+      const subDir = await dirHandle.getDirectoryHandle(activeSubject, { create: true });
+      for (const file of Array.from(files)) {
+        const fh = await subDir.getFileHandle(file.name, { create: true });
+        const writable = await (fh as any).createWritable();
+        await writable.write(file);
+        await writable.close();
+      }
+      await loadPdfs();
+    } catch (err: any) {
+      setError(`Could not save PDF: ${err?.message || 'unknown error'}`);
+    }
+    // Reset input so same file can be re-selected
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, [activeSubject, dirHandle, loadPdfs]);
+
   const addPdf = async () => {
     if (!activeSubject) return;
+    setError('');
     try {
       if (isElectron && api) {
         const paths = await api.showOpenDialog({
@@ -165,29 +189,13 @@ const PdfManager = () => {
         for (const p of paths) {
           await api.addPdf(activeSubject, p);
         }
+        await loadPdfs();
       } else if (dirHandle) {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.pdf';
-        input.multiple = true;
-        await new Promise<void>((resolve) => {
-          input.onchange = async () => {
-            if (!input.files) { resolve(); return; }
-            const subDir = await dirHandle.getDirectoryHandle(activeSubject, { create: true });
-            for (const file of Array.from(input.files)) {
-              const fh = await subDir.getFileHandle(file.name, { create: true });
-              const writable = await (fh as any).createWritable();
-              await writable.write(file);
-              await writable.close();
-            }
-            resolve();
-          };
-          input.click();
-        });
+        // Trigger the persistent hidden file input
+        fileInputRef.current?.click();
       }
-      await loadPdfs();
-    } catch {
-      setError('Could not add PDF.');
+    } catch (err: any) {
+      setError(`Could not add PDF: ${err?.message || 'unknown error'}`);
     }
   };
 
@@ -242,12 +250,16 @@ const PdfManager = () => {
     } catch (e: any) {
       if (e.name === 'AbortError') return;
       if (e.name === 'SecurityError') {
-        setError('Folder picker is blocked in this preview. Open the app in a new tab (click the external link icon top-right), then try again.');
+        setError('iframe_blocked');
       } else {
         setError(`Could not access folder: ${e.message || 'unknown error'}`);
       }
     }
   };
+
+  const filteredPdfs = pdfs.filter((p) =>
+    p.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // ── No Electron + no folder picked ──────────────────────────────
   if (!isElectron && !dirHandle) {
@@ -268,17 +280,30 @@ const PdfManager = () => {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center py-16 border-2 border-dashed border-border rounded-xl"
+            className="space-y-4"
           >
-            <FolderOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-40" />
-            <p className="text-sm text-muted-foreground mb-1">Select your StudyFlow folder</p>
-            <p className="text-xs text-muted-foreground mb-5">
-              Pick <code className="bg-muted px-1.5 py-0.5 rounded text-xs">D:\StudyFlow</code> or any folder with subject sub-folders
-            </p>
-            <Button onClick={pickFolder} className="gap-2">
-              <FolderOpen className="w-4 h-4" />
-              Select Folder
-            </Button>
+            <div className="text-center py-12 border-2 border-dashed border-border rounded-xl">
+              <FolderOpen className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-40" />
+              <p className="text-sm font-medium text-foreground mb-1">Select your StudyFlow folder</p>
+              <p className="text-xs text-muted-foreground mb-5">
+                Pick <code className="bg-muted px-1.5 py-0.5 rounded text-xs">D:\StudyFlow</code> or any folder with subject sub-folders
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2 justify-center items-center">
+                <Button onClick={pickFolder} className="gap-2">
+                  <FolderOpen className="w-4 h-4" />
+                  Select Folder
+                </Button>
+                <a
+                  href={window.location.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Open in new tab (fixes iframe restrictions)
+                </a>
+              </div>
+            </div>
           </motion.div>
         )}
       </div>
@@ -288,6 +313,16 @@ const PdfManager = () => {
   // ── Main UI ─────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
+      {/* Hidden persistent file input for PDF uploads */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf"
+        multiple
+        className="hidden"
+        onChange={handleFileInputChange}
+      />
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-xl font-bold text-foreground">PDF Manager</h2>
@@ -298,16 +333,35 @@ const PdfManager = () => {
         {!isElectron && (
           <Button size="sm" variant="outline" onClick={pickFolder} className="gap-1.5 text-xs">
             <FolderOpen className="w-3.5 h-3.5" />
-            Change
+            Change Folder
           </Button>
         )}
       </div>
 
-      {error && (
+      {error && error !== 'iframe_blocked' && (
         <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
           <button onClick={() => setError('')} className="ml-auto text-xs underline">dismiss</button>
+        </div>
+      )}
+
+      {error === 'iframe_blocked' && (
+        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            Folder picker is blocked inside the preview iframe.{' '}
+            <a
+              href={window.location.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-medium inline-flex items-center gap-0.5"
+            >
+              Open in new tab <ExternalLink className="w-3 h-3" />
+            </a>{' '}
+            and try again.
+          </div>
+          <button onClick={() => setError('')} className="text-xs underline ml-auto shrink-0">dismiss</button>
         </div>
       )}
 
@@ -368,12 +422,24 @@ const PdfManager = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-display text-lg font-semibold text-foreground">{activeSubject}</h3>
-                <Button size="sm" onClick={addPdf} className="gap-1.5">
-                  <Upload className="w-4 h-4" />
-                  Add PDF
-                </Button>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-display text-lg font-semibold text-foreground truncate">{activeSubject}</h3>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder="Search PDFs..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring w-36"
+                    />
+                  </div>
+                  <Button size="sm" onClick={addPdf} className="gap-1.5 shrink-0">
+                    <Upload className="w-4 h-4" />
+                    Add PDF
+                  </Button>
+                </div>
               </div>
 
               {loadingPdfs ? (
@@ -390,16 +456,20 @@ const PdfManager = () => {
                   <p className="text-sm text-muted-foreground">No PDFs in {activeSubject}</p>
                   <p className="text-xs text-muted-foreground mt-1">Click "Add PDF" to get started</p>
                 </motion.div>
+              ) : filteredPdfs.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="text-sm">No PDFs match "{searchQuery}"</p>
+                </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <AnimatePresence>
-                    {pdfs.map((pdf) => (
+                    {filteredPdfs.map((pdf) => (
                       <motion.div
                         key={pdf}
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="group relative bg-card border border-border rounded-xl p-4 card-shadow hover:card-shadow-hover transition-shadow flex flex-col items-center text-center"
+                        className="group relative bg-card border border-border rounded-xl p-4 card-shadow hover:shadow-md transition-shadow flex flex-col items-center text-center"
                       >
                         <div className="w-12 h-14 rounded-lg bg-destructive/10 flex items-center justify-center mb-3">
                           <FileText className="w-6 h-6 text-destructive" />
