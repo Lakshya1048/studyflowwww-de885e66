@@ -11,7 +11,7 @@ import {
   DialogFooter, DialogDescription
 } from '@/components/ui/dialog';
 
-const BASE_DIR = 'D:\\StudyFlow';
+// No hardcoded base dir — user always picks their own folder
 
 // Module-level persistence — survives re-renders and effect chains
 let _savedDirHandle: FileSystemDirectoryHandle | null = null;
@@ -33,8 +33,8 @@ const PdfManager = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const api = typeof window !== 'undefined' ? window.api : undefined;
-  const isElectron = !!api;
+  // Always use File System Access API for folder picking (works in both browser and Electron)
+  const isElectron = false;
 
   // Wrap setters to also persist to module-level
   const setSubjects = useCallback((val: string[] | ((prev: string[]) => string[])) => {
@@ -72,52 +72,42 @@ const PdfManager = () => {
 
   // Load subjects
   const loadSubjects = useCallback(async () => {
+    if (!dirHandle) return;
     setLoading(true);
     setError('');
     try {
-      if (isElectron && api) {
-        const subs = await api.getSubjects();
-        setSubjects(subs);
-        setActiveSubject((prev) => (prev ? prev : subs.length > 0 ? subs[0] : null));
-      } else if (dirHandle) {
-        const folders: string[] = [];
-        for await (const entry of (dirHandle as any).values()) {
-          if (entry.kind === 'directory') folders.push(entry.name);
-        }
-        folders.sort((a, b) => a.localeCompare(b));
-        setSubjects(folders);
-        setActiveSubject((prev) => (prev ? prev : folders.length > 0 ? folders[0] : null));
+      const folders: string[] = [];
+      for await (const entry of (dirHandle as any).values()) {
+        if (entry.kind === 'directory') folders.push(entry.name);
       }
+      folders.sort((a, b) => a.localeCompare(b));
+      setSubjects(folders);
+      setActiveSubject((prev) => (prev ? prev : folders.length > 0 ? folders[0] : null));
     } catch {
       setError('Could not load subjects.');
     }
     setLoading(false);
-  }, [api, isElectron, dirHandle]);
+  }, [dirHandle]);
 
   // Load PDFs for active subject
   const loadPdfs = useCallback(async () => {
-    if (!activeSubject) { setPdfs([]); return; }
+    if (!activeSubject || !dirHandle) { setPdfs([]); return; }
     setLoadingPdfs(true);
     try {
-      if (isElectron && api) {
-        const files = await api.getPdfs(activeSubject);
-        setPdfs(files);
-      } else if (dirHandle) {
-        const subDir = await dirHandle.getDirectoryHandle(activeSubject);
-        const files: string[] = [];
-        for await (const entry of (subDir as any).values()) {
-          if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
-            files.push(entry.name);
-          }
+      const subDir = await dirHandle.getDirectoryHandle(activeSubject);
+      const files: string[] = [];
+      for await (const entry of (subDir as any).values()) {
+        if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
+          files.push(entry.name);
         }
-        files.sort((a, b) => a.localeCompare(b));
-        setPdfs(files);
       }
+      files.sort((a, b) => a.localeCompare(b));
+      setPdfs(files);
     } catch {
       setError(`Could not load PDFs for ${activeSubject}.`);
     }
     setLoadingPdfs(false);
-  }, [activeSubject, api, isElectron, dirHandle]);
+  }, [activeSubject, dirHandle]);
 
   useEffect(() => { loadSubjects(); }, [loadSubjects]);
   useEffect(() => { loadPdfs(); }, [loadPdfs]);
@@ -125,13 +115,9 @@ const PdfManager = () => {
   // ── Actions ──────────────────────────────────────────────────────
   const createSubject = async () => {
     const name = newSubjectName.trim();
-    if (!name) return;
+    if (!name || !dirHandle) return;
     try {
-      if (isElectron && api) {
-        await api.createSubject(name);
-      } else if (dirHandle) {
-        await dirHandle.getDirectoryHandle(name, { create: true });
-      }
+      await dirHandle.getDirectoryHandle(name, { create: true });
       setNewSubjectName('');
       setShowNewSubject(false);
       await loadSubjects();
@@ -143,12 +129,9 @@ const PdfManager = () => {
 
   const deleteSubject = async (name: string) => {
     if (!confirm(`Delete "${name}" and all its PDFs?`)) return;
+    if (!dirHandle) return;
     try {
-      if (isElectron && api) {
-        await api.deleteSubject(name);
-      } else if (dirHandle) {
-        await (dirHandle as any).removeEntry(name, { recursive: true });
-      }
+      await (dirHandle as any).removeEntry(name, { recursive: true });
       if (activeSubject === name) setActiveSubject(null);
       await loadSubjects();
     } catch {
@@ -178,57 +161,31 @@ const PdfManager = () => {
   }, [activeSubject, dirHandle, loadPdfs]);
 
   const addPdf = async () => {
-    if (!activeSubject) return;
+    if (!activeSubject || !dirHandle) return;
     setError('');
-    try {
-      if (isElectron && api) {
-        const paths = await api.showOpenDialog({
-          filters: [{ name: 'PDF Files', extensions: ['pdf'] }],
-          properties: ['openFile', 'multiSelections'],
-        });
-        for (const p of paths) {
-          await api.addPdf(activeSubject, p);
-        }
-        await loadPdfs();
-      } else if (dirHandle) {
-        // Trigger the persistent hidden file input
-        fileInputRef.current?.click();
-      }
-    } catch (err: any) {
-      setError(`Could not add PDF: ${err?.message || 'unknown error'}`);
-    }
+    fileInputRef.current?.click();
   };
 
   const openPdf = async (fileName: string) => {
-    if (!activeSubject) return;
+    if (!activeSubject || !dirHandle) return;
     try {
-      if (isElectron && api) {
-        const fullPath = await api.getPdfPath(activeSubject, fileName);
-        setViewingPdf(fileName);
-        setViewPdfUrl(`file://${fullPath}`);
-      } else if (dirHandle) {
-        const subDir = await dirHandle.getDirectoryHandle(activeSubject);
-        const fh = await subDir.getFileHandle(fileName);
-        const file = await fh.getFile();
-        const url = URL.createObjectURL(file);
-        setViewingPdf(fileName);
-        setViewPdfUrl(url);
-      }
+      const subDir = await dirHandle.getDirectoryHandle(activeSubject);
+      const fh = await subDir.getFileHandle(fileName);
+      const file = await fh.getFile();
+      const url = URL.createObjectURL(file);
+      setViewingPdf(fileName);
+      setViewPdfUrl(url);
     } catch {
       setError(`Could not open ${fileName}.`);
     }
   };
 
   const deletePdf = async (fileName: string) => {
-    if (!activeSubject) return;
+    if (!activeSubject || !dirHandle) return;
     if (!confirm(`Delete "${fileName}"?`)) return;
     try {
-      if (isElectron && api) {
-        await api.deletePdf(activeSubject, fileName);
-      } else if (dirHandle) {
-        const subDir = await dirHandle.getDirectoryHandle(activeSubject);
-        await (subDir as any).removeEntry(fileName);
-      }
+      const subDir = await dirHandle.getDirectoryHandle(activeSubject);
+      await (subDir as any).removeEntry(fileName);
       await loadPdfs();
     } catch {
       setError(`Could not delete ${fileName}.`);
@@ -236,7 +193,7 @@ const PdfManager = () => {
   };
 
   const closeViewer = () => {
-    if (viewPdfUrl && !isElectron) URL.revokeObjectURL(viewPdfUrl);
+    if (viewPdfUrl) URL.revokeObjectURL(viewPdfUrl);
     setViewingPdf(null);
     setViewPdfUrl(null);
   };
@@ -261,8 +218,8 @@ const PdfManager = () => {
     p.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // ── No Electron + no folder picked ──────────────────────────────
-  if (!isElectron && !dirHandle) {
+  // ── No folder picked yet ────────────────────────────────────────
+  if (!dirHandle) {
     return (
       <div className="space-y-4">
         <h2 className="font-display text-xl font-bold text-foreground">PDF Manager</h2>
@@ -318,15 +275,13 @@ const PdfManager = () => {
         <div>
           <h2 className="font-display text-xl font-bold text-foreground">PDF Manager</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {isElectron ? BASE_DIR : 'Local folder'} &middot; {subjects.length} subject{subjects.length !== 1 ? 's' : ''}
+            Local folder &middot; {subjects.length} subject{subjects.length !== 1 ? 's' : ''}
           </p>
         </div>
-        {!isElectron && (
-          <Button size="sm" variant="outline" onClick={pickFolder} className="gap-1.5 text-xs">
-            <FolderOpen className="w-3.5 h-3.5" />
-            Change Folder
-          </Button>
-        )}
+        <Button size="sm" variant="outline" onClick={pickFolder} className="gap-1.5 text-xs">
+          <FolderOpen className="w-3.5 h-3.5" />
+          Change Folder
+        </Button>
       </div>
 
       {error && error !== 'iframe_blocked' && (
