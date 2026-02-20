@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
-import { motion } from 'framer-motion';
-import { CheckSquare, Timer, TrendingUp, ArrowRight, FileText } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { CheckSquare, Timer, TrendingUp, ArrowRight, FileText, Bell, X } from 'lucide-react';
 import type { TabId, StudyTask, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { Profile } from '@/hooks/useAuth';
@@ -14,12 +14,14 @@ const Dashboard = ({ onNavigate, profile }: DashboardProps) => {
   const today = new Date().toISOString().split('T')[0];
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   const todayTasks = tasks.filter((t) => t.dueDate === today);
   const pendingTasks = todayTasks.filter((t) => !t.completed);
   const overdueTasks = tasks.filter((t) => !t.completed && t.dueDate < today);
   const todaySessions = sessions.filter((s) => s.date === today);
   const todayMinutes = todaySessions.reduce((a, s) => a + s.duration, 0);
+  const todaySubjects = [...new Set(todaySessions.map((s) => s.subject))].filter(Boolean);
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
@@ -28,44 +30,82 @@ const Dashboard = ({ onNavigate, profile }: DashboardProps) => {
     return 'Good evening';
   }, []);
 
+  // Build notifications list
+  const notifications = useMemo(() => {
+    const items: { id: string; text: string; type: 'info' | 'warn' }[] = [];
+    if (overdueTasks.length > 0) {
+      items.push({ id: 'overdue', text: `You have ${overdueTasks.length} overdue task${overdueTasks.length > 1 ? 's' : ''}!`, type: 'warn' });
+    }
+    if (pendingTasks.length > 0) {
+      items.push({ id: 'pending', text: `${pendingTasks.length} task${pendingTasks.length > 1 ? 's' : ''} due today`, type: 'info' });
+    }
+    if (todaySubjects.length > 0) {
+      items.push({ id: 'revise', text: `Revise: ${todaySubjects.join(', ')}`, type: 'info' });
+    }
+    if (todayMinutes > 0) {
+      items.push({ id: 'studied', text: `You've studied ${todayMinutes}m today — keep it up!`, type: 'info' });
+    }
+    if (items.length === 0) {
+      items.push({ id: 'empty', text: 'No notifications yet. Start studying!', type: 'info' });
+    }
+    return items;
+  }, [overdueTasks, pendingTasks, todaySubjects, todayMinutes]);
+
+  const hasWarning = notifications.some((n) => n.type === 'warn');
+
   const quickCards = [
-    {
-      title: "Today's Tasks",
-      subtitle: `${pendingTasks.length} pending${overdueTasks.length ? `, ${overdueTasks.length} overdue` : ''}`,
-      icon: CheckSquare,
-      tab: 'tasks' as TabId,
-      gradient: 'gradient-accent',
-    },
-    {
-      title: 'Focus Timer',
-      subtitle: `${todayMinutes}m studied today`,
-      icon: Timer,
-      tab: 'timer' as TabId,
-      gradient: 'gradient-primary',
-    },
-    {
-      title: 'PDF Manager',
-      subtitle: 'Your study PDFs',
-      icon: FileText,
-      tab: 'pdfs' as TabId,
-      gradient: 'gradient-accent',
-    },
-    {
-      title: 'Progress',
-      subtitle: `${todaySessions.length} sessions today`,
-      icon: TrendingUp,
-      tab: 'progress' as TabId,
-      gradient: 'gradient-primary',
-    },
+    // ... keep existing code
   ];
 
   return (
     <div className="space-y-6">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <h1 className="font-display text-3xl font-bold text-foreground">
-          {greeting}{profile?.display_name ? `, ${profile.display_name}` : ''} 👋
-        </h1>
-        <p className="text-muted-foreground mt-1">Ready to study? Here's your overview for today.</p>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="flex items-start justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-bold text-foreground">
+            {greeting}{profile?.display_name ? `, ${profile.display_name}` : ''} 👋
+          </h1>
+          <p className="text-muted-foreground mt-1">Ready to study? Here's your overview for today.</p>
+        </div>
+
+        {/* Notification bell */}
+        <div className="relative">
+          <button
+            onClick={() => setNotifOpen((v) => !v)}
+            className="relative p-2 rounded-xl bg-card border border-border hover:bg-muted transition-colors"
+          >
+            <Bell className="w-5 h-5 text-foreground" />
+            {hasWarning && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
+            )}
+          </button>
+
+          <AnimatePresence>
+            {notifOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 top-12 w-72 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden"
+              >
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+                  <p className="text-sm font-semibold text-foreground">Notifications</p>
+                  <button onClick={() => setNotifOpen(false)} className="text-muted-foreground hover:text-foreground">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="max-h-64 overflow-y-auto divide-y divide-border">
+                  {notifications.map((n) => (
+                    <div key={n.id} className="px-4 py-3 flex items-start gap-2.5">
+                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${n.type === 'warn' ? 'bg-destructive' : 'bg-primary'}`} />
+                      <p className="text-xs text-foreground leading-relaxed">{n.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </motion.div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
