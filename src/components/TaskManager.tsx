@@ -87,8 +87,10 @@ const TaskManager = () => {
           <ChevronLeft className="w-5 h-5 text-foreground" />
         </button>
         <div className="text-center min-w-[140px]">
-          <p className="text-sm font-semibold text-foreground">{formatDate(selectedDate)}</p>
-          {isToday && <p className="text-xs text-primary font-medium">Today</p>}
+          <p className="text-sm font-semibold text-foreground">
+            {isToday ? 'Today' : formatDate(selectedDate)}
+          </p>
+          {isToday && <p className="text-xs text-muted-foreground">{formatDate(selectedDate)}</p>}
         </div>
         <button onClick={() => changeDate(1)} className="p-1 rounded hover:bg-muted transition-colors">
           <ChevronRight className="w-5 h-5 text-foreground" />
@@ -98,7 +100,7 @@ const TaskManager = () => {
             onClick={() => setSelectedDate(getLocalDateStr())}
             className="text-xs text-primary hover:underline ml-1"
           >
-            Today
+            ↩ Back
           </button>
         )}
       </div>
