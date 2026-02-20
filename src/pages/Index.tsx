@@ -11,6 +11,7 @@ import SettingsPanel from '@/components/SettingsPanel';
 import { useAuth } from '@/hooks/useAuth';
 import type { TabId, StreakData, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useStudyNotifications } from '@/hooks/useStudyNotifications';
 import { Menu, X, Moon, Sun, Settings } from 'lucide-react';
 
 const Index = () => {
@@ -20,6 +21,9 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Study notifications (revision reminders + idle nudges)
+  useStudyNotifications(profile?.display_name);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Redirect to auth if not logged in
