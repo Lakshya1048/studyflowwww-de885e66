@@ -199,7 +199,7 @@ const DoubtSolver = () => {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display text-xl font-bold text-foreground">AI Doubt Solver</h2>
-          <p className="text-sm text-muted-foreground">Ask any PCM doubt — attach images or PDFs (max 4 MB)</p>
+          <p className="text-sm text-muted-foreground">Ask your doubts</p>
         </div>
         {messages.length > 0 && (
           <Button size="sm" variant="outline" onClick={() => setMessages([])} className="gap-1.5">
@@ -213,8 +213,7 @@ const DoubtSolver = () => {
         {messages.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <Bot className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p className="text-sm font-medium">Ask your doubt</p>
-            <p className="text-xs mt-1">Type a question, or attach an image/PDF (max 10 MB) — or use camera 📷</p>
+            <p className="text-sm font-medium">Ask your doubts</p>
             <div className="flex flex-wrap gap-2 justify-center mt-4">
               {['What is the derivative of sin(x)?', 'Balance: Fe + O₂ → Fe₂O₃', 'Explain electromagnetic induction'].map((q) => (
                 <button
