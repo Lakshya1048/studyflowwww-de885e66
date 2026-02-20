@@ -6,8 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
 
-// Max 4 MB per file to stay safely under edge function memory limits
-const MAX_FILE_BYTES = 4 * 1024 * 1024;
+// 10 MB limit per file — keeps edge function safely under memory limits
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 type Attachment = {
   name: string;
@@ -56,7 +56,7 @@ const DoubtSolver = () => {
     if (oversized.length > 0) {
       toast({
         title: 'File too large',
-        description: `Max size is 4 MB per file. "${oversized[0].name}" is ${(oversized[0].size / 1024 / 1024).toFixed(1)} MB. For large PDFs, try taking a screenshot of the relevant page.`,
+        description: `Max size is 10 MB per file. "${oversized[0].name}" is ${(oversized[0].size / 1024 / 1024).toFixed(1)} MB. For large PDFs, try taking a screenshot of the relevant page.`,
         variant: 'destructive',
       });
       e.target.value = '';
@@ -214,7 +214,7 @@ const DoubtSolver = () => {
           <div className="text-center py-12 text-muted-foreground">
             <Bot className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-sm font-medium">Ask your doubt</p>
-            <p className="text-xs mt-1">Type a question, or attach an image / PDF (max 4 MB) of your problem</p>
+            <p className="text-xs mt-1">Type a question, or attach an image/PDF (max 10 MB) — or use camera 📷</p>
             <div className="flex flex-wrap gap-2 justify-center mt-4">
               {['What is the derivative of sin(x)?', 'Balance: Fe + O₂ → Fe₂O₃', 'Explain electromagnetic induction'].map((q) => (
                 <button
@@ -326,10 +326,12 @@ const DoubtSolver = () => {
 
       {/* Input row */}
       <div className="flex gap-2 items-end">
+        {/* Hidden file input */}
         <input
           ref={fileInputRef}
           type="file"
           accept={ACCEPTED}
+          capture="environment"
           multiple
           className="hidden"
           onChange={handleFileSelect}
