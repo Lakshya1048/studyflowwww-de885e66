@@ -1,15 +1,19 @@
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Trash2, Bot, User, Loader2, Paperclip, X, FileText, Image as ImageIcon } from 'lucide-react';
+import { Send, Trash2, Bot, User, Loader2, Paperclip, X, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import ReactMarkdown from 'react-markdown';
+import { useToast } from '@/hooks/use-toast';
+
+// Max 4 MB per file to stay safely under edge function memory limits
+const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 type Attachment = {
   name: string;
   mimeType: string;
-  base64: string; // pure base64 without data URL prefix
-  preview?: string; // data URL for image previews
+  base64: string;
+  preview?: string;
 };
 
 type Message = {
@@ -19,22 +23,18 @@ type Message = {
 };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/doubt-solver`;
-
 const ACCEPTED = 'image/png,image/jpeg,image/webp,image/gif,application/pdf';
 
 const fileToBase64 = (file: File): Promise<string> =>
   new Promise((res, rej) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const result = reader.result as string;
-      // strip data URL prefix
-      res(result.split(',')[1]);
-    };
+    reader.onload = () => res((reader.result as string).split(',')[1]);
     reader.onerror = rej;
     reader.readAsDataURL(file);
   });
 
 const DoubtSolver = () => {
+  const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -52,6 +52,17 @@ const DoubtSolver = () => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
+    const oversized = files.filter((f) => f.size > MAX_FILE_BYTES);
+    if (oversized.length > 0) {
+      toast({
+        title: 'File too large',
+        description: `Max size is 4 MB per file. "${oversized[0].name}" is ${(oversized[0].size / 1024 / 1024).toFixed(1)} MB. For large PDFs, try taking a screenshot of the relevant page.`,
+        variant: 'destructive',
+      });
+      e.target.value = '';
+      return;
+    }
+
     const newAttachments: Attachment[] = await Promise.all(
       files.map(async (file) => {
         const base64 = await fileToBase64(file);
@@ -65,13 +76,11 @@ const DoubtSolver = () => {
       })
     );
 
-    setAttachments((prev) => [...prev, ...newAttachments].slice(0, 4)); // max 4 files
+    setAttachments((prev) => [...prev, ...newAttachments].slice(0, 4));
     e.target.value = '';
   };
 
-  const removeAttachment = (idx: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== idx));
-  };
+  const removeAttachment = (idx: number) => setAttachments((prev) => prev.filter((_, i) => i !== idx));
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -113,7 +122,17 @@ const DoubtSolver = () => {
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: 'Failed to get response' }));
-        throw new Error(err.error || 'Failed to get response');
+        if (resp.status === 429) {
+          toast({ title: 'Too many requests', description: 'Please wait a moment and try again.', variant: 'destructive' });
+        } else if (resp.status === 402) {
+          toast({ title: 'Usage limit reached', description: 'AI usage limit reached. Please try again later.', variant: 'destructive' });
+        } else if (resp.status === 546) {
+          toast({ title: 'File too large for AI', description: 'The attached file is too large to process. Please use a smaller image or a shorter PDF (under 4 MB).', variant: 'destructive' });
+        } else {
+          throw new Error(err.error || 'Failed to get response');
+        }
+        setIsLoading(false);
+        return;
       }
 
       if (!resp.body) throw new Error('No response body');
@@ -180,7 +199,7 @@ const DoubtSolver = () => {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display text-xl font-bold text-foreground">AI Doubt Solver</h2>
-          <p className="text-sm text-muted-foreground">Ask any Physics, Chemistry, or Maths doubt — attach images or PDFs</p>
+          <p className="text-sm text-muted-foreground">Ask any PCM doubt — attach images or PDFs (max 4 MB)</p>
         </div>
         {messages.length > 0 && (
           <Button size="sm" variant="outline" onClick={() => setMessages([])} className="gap-1.5">
@@ -195,7 +214,7 @@ const DoubtSolver = () => {
           <div className="text-center py-12 text-muted-foreground">
             <Bot className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-sm font-medium">Ask your doubt</p>
-            <p className="text-xs mt-1">Type a question, or attach an image / PDF of your problem</p>
+            <p className="text-xs mt-1">Type a question, or attach an image / PDF (max 4 MB) of your problem</p>
             <div className="flex flex-wrap gap-2 justify-center mt-4">
               {['What is the derivative of sin(x)?', 'Balance: Fe + O₂ → Fe₂O₃', 'Explain electromagnetic induction'].map((q) => (
                 <button
@@ -223,8 +242,7 @@ const DoubtSolver = () => {
                   <Bot className="w-4 h-4 text-primary-foreground" />
                 </div>
               )}
-              <div className={`max-w-[85%] space-y-2`}>
-                {/* Attachments preview in the bubble */}
+              <div className="max-w-[85%] space-y-2">
                 {msg.attachments && msg.attachments.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {msg.attachments.map((a, ai) => (
@@ -242,7 +260,6 @@ const DoubtSolver = () => {
                   </div>
                 )}
 
-                {/* Text bubble */}
                 {(msg.content || msg.role === 'assistant') && (
                   <div
                     className={`rounded-xl px-4 py-3 text-sm ${
@@ -283,7 +300,7 @@ const DoubtSolver = () => {
         )}
       </div>
 
-      {/* Attachment previews before sending */}
+      {/* Pending attachment previews */}
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
           {attachments.map((a, i) => (
@@ -320,7 +337,7 @@ const DoubtSolver = () => {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isLoading}
-          title="Attach image or PDF"
+          title="Attach image or PDF (max 4 MB)"
           className="flex-shrink-0 p-2.5 rounded-lg border border-input text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
         >
           <Paperclip className="w-4 h-4" />
