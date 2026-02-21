@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckSquare, Timer, BarChart3, LayoutDashboard, Flame, Moon, Sun, MessageCircleQuestion, FileText, Settings, User } from 'lucide-react';
 import type { TabId, StreakData } from '@/lib/types';
-import type { Profile } from '@/hooks/useAuth';
+import type { Profile } from '@/hooks/useProfile';
 
 interface SidebarProps {
   activeTab: TabId;
   onTabChange: (tab: TabId) => void;
   streak: StreakData;
   onOpenSettings: () => void;
-  profile: Profile | null;
+  profile: Profile;
 }
 
 const navItems: { id: TabId; label: string; icon: React.ElementType }[] = [
@@ -133,4 +133,3 @@ const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile }: Si
 };
 
 export default Sidebar;
-
