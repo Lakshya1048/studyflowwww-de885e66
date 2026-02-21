@@ -12,6 +12,7 @@ import type { TabId, StreakData, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useStudyNotifications } from '@/hooks/useStudyNotifications';
 import { Menu, X, Moon, Sun, Settings } from 'lucide-react';
+import OfflineIndicator from '@/components/OfflineIndicator';
 
 const Index = () => {
   const { profile, updateProfile } = useProfile();
@@ -87,6 +88,7 @@ const Index = () => {
 
   return (
     <>
+      <OfflineIndicator />
       <SettingsPanel
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
