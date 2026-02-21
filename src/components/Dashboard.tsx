@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CheckSquare, Timer, TrendingUp, ArrowRight, FileText, Bell, X } from 'lucide-react';
 import type { TabId, StudyTask, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import type { Profile } from '@/hooks/useAuth';
+import type { Profile } from '@/hooks/useProfile';
 
 interface DashboardProps {
   onNavigate: (tab: TabId) => void;
-  profile: Profile | null;
+  profile: Profile;
 }
 
 const Dashboard = ({ onNavigate, profile }: DashboardProps) => {

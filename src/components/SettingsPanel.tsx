@@ -1,30 +1,26 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Target, LogOut, Save, Moon, Sun, Loader2, Trash2 } from 'lucide-react';
+import { X, User, Target, Save, Moon, Sun, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import type { Profile } from '@/hooks/useAuth';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { Profile } from '@/hooks/useProfile';
 import { useToast } from '@/hooks/use-toast';
 
 interface SettingsPanelProps {
   open: boolean;
   onClose: () => void;
-  user: SupabaseUser | null;
-  profile: Profile | null;
-  onUpdateProfile: (updates: Partial<Pick<Profile, 'display_name' | 'daily_goal_minutes'>>) => Promise<unknown>;
-  onSignOut: () => void;
+  profile: Profile;
+  onUpdateProfile: (updates: Partial<Profile>) => void;
 }
 
-const SettingsPanel = ({ open, onClose, user, profile, onUpdateProfile, onSignOut }: SettingsPanelProps) => {
+const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPanelProps) => {
   const { toast } = useToast();
   const [name, setName] = useState(profile?.display_name || '');
   const [goalMinutes, setGoalMinutes] = useState(profile?.daily_goal_minutes ?? 60);
-  const [saving, setSaving] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
 
-  // Sync when profile loads/changes
+  // Sync when profile changes
   useState(() => {
     if (profile) {
       setName(profile.display_name || '');
@@ -39,16 +35,10 @@ const SettingsPanel = ({ open, onClose, user, profile, onUpdateProfile, onSignOu
     localStorage.setItem('studyflow-theme', isDark ? 'dark' : 'light');
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    const err = await onUpdateProfile({ display_name: name.trim() || null, daily_goal_minutes: goalMinutes });
-    setSaving(false);
-    if (err) {
-      toast({ title: 'Failed to save', description: 'Please try again.', variant: 'destructive' });
-    } else {
-      toast({ title: 'Settings saved ✓' });
-      onClose();
-    }
+  const handleSave = () => {
+    onUpdateProfile({ display_name: name.trim() || null, daily_goal_minutes: goalMinutes });
+    toast({ title: 'Settings saved ✓' });
+    onClose();
   };
 
   const clearStudyData = () => {
@@ -63,7 +53,6 @@ const SettingsPanel = ({ open, onClose, user, profile, onUpdateProfile, onSignOu
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -72,7 +61,6 @@ const SettingsPanel = ({ open, onClose, user, profile, onUpdateProfile, onSignOu
             onClick={onClose}
           />
 
-          {/* Panel */}
           <motion.aside
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
@@ -80,7 +68,6 @@ const SettingsPanel = ({ open, onClose, user, profile, onUpdateProfile, onSignOu
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
             className="fixed top-0 right-0 bottom-0 z-50 w-80 bg-card border-l border-border flex flex-col shadow-2xl"
           >
-            {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-border">
               <h2 className="font-display text-lg font-bold text-foreground">Settings</h2>
               <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1 rounded-lg hover:bg-muted transition-colors">
@@ -95,22 +82,14 @@ const SettingsPanel = ({ open, onClose, user, profile, onUpdateProfile, onSignOu
                   <User className="w-4 h-4 text-primary" />
                   <h3 className="text-sm font-semibold text-foreground">Profile</h3>
                 </div>
-                <div className="space-y-3">
-                  <div className="space-y-1.5">
-                    <Label>Display Name</Label>
-                    <Input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Your name"
-                    />
-                    <p className="text-xs text-muted-foreground">Shown in greeting on dashboard</p>
-                  </div>
-                  {user?.email && (
-                    <div className="space-y-1.5">
-                      <Label>Email</Label>
-                      <Input value={user.email} disabled className="opacity-60" />
-                    </div>
-                  )}
+                <div className="space-y-1.5">
+                  <Label>Display Name</Label>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Your name"
+                  />
+                  <p className="text-xs text-muted-foreground">Shown in greeting on dashboard</p>
                 </div>
               </section>
 
@@ -172,17 +151,11 @@ const SettingsPanel = ({ open, onClose, user, profile, onUpdateProfile, onSignOu
             </div>
 
             {/* Footer */}
-            <div className="p-5 border-t border-border space-y-2">
-              <Button onClick={handleSave} className="w-full gap-2" disabled={saving}>
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            <div className="p-5 border-t border-border">
+              <Button onClick={handleSave} className="w-full gap-2">
+                <Save className="w-4 h-4" />
                 Save Changes
               </Button>
-              {user && (
-                <Button variant="outline" className="w-full gap-2 text-muted-foreground" onClick={onSignOut}>
-                  <LogOut className="w-4 h-4" />
-                  Sign Out
-                </Button>
-              )}
             </div>
           </motion.aside>
         </>

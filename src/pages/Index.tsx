@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import Dashboard from '@/components/Dashboard';
 import TaskManager from '@/components/TaskManager';
@@ -8,30 +7,21 @@ import PdfManager from '@/components/PdfManager';
 import ProgressTracker from '@/components/ProgressTracker';
 import DoubtSolver from '@/components/DoubtSolver';
 import SettingsPanel from '@/components/SettingsPanel';
-import { useAuth } from '@/hooks/useAuth';
+import { useProfile } from '@/hooks/useProfile';
 import type { TabId, StreakData, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useStudyNotifications } from '@/hooks/useStudyNotifications';
 import { Menu, X, Moon, Sun, Settings } from 'lucide-react';
 
 const Index = () => {
-  const navigate = useNavigate();
-  const { user, profile, loading, signOut, updateProfile } = useAuth();
+  const { profile, updateProfile } = useProfile();
 
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Study notifications (revision reminders + idle nudges)
   useStudyNotifications(profile?.display_name);
   const [settingsOpen, setSettingsOpen] = useState(false);
-
-  // Redirect to auth if not logged in
-  useEffect(() => {
-    if (!loading && !user) {
-      navigate('/auth');
-    }
-  }, [loading, user, navigate]);
 
   useEffect(() => {
     const saved = localStorage.getItem('studyflow-theme');
@@ -77,11 +67,6 @@ const Index = () => {
     setMobileMenuOpen(false);
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/auth');
-  };
-
   const toggleMobileTheme = () => {
     document.documentElement.classList.toggle('dark');
     const isDark = document.documentElement.classList.contains('dark');
@@ -100,25 +85,13 @@ const Index = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) return null;
-
   return (
     <>
       <SettingsPanel
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        user={user}
         profile={profile}
         onUpdateProfile={updateProfile}
-        onSignOut={handleSignOut}
       />
 
       <div className="flex h-screen bg-background overflow-hidden">
