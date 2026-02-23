@@ -16,7 +16,7 @@ const navItems: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'tasks', label: 'Tasks', icon: CheckSquare },
   { id: 'timer', label: 'Focus Timer', icon: Timer },
-  { id: 'pdfs', label: 'PDFs', icon: FileText },
+  { id: 'pdfs', label: 'Study Materials', icon: FileText },
   { id: 'doubts', label: 'Doubt Solver', icon: MessageCircleQuestion },
   { id: 'progress', label: 'Progress', icon: BarChart3 },
 ];

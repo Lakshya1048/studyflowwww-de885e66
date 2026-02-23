@@ -69,7 +69,7 @@ const Dashboard = ({ onNavigate, profile }: DashboardProps) => {
       gradient: 'gradient-primary',
     },
     {
-      title: 'PDF Manager',
+      title: 'Study Materials',
       subtitle: 'Your study PDFs',
       icon: FileText,
       tab: 'pdfs' as TabId,
