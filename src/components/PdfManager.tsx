@@ -10,14 +10,14 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogFooter, DialogDescription
 } from '@/components/ui/dialog';
-
-// No hardcoded base dir — user always picks their own folder
+import { saveFolderHandle, loadFolderHandle } from '@/lib/folderDb';
 
 // Module-level persistence — survives re-renders and effect chains
 let _savedDirHandle: FileSystemDirectoryHandle | null = null;
 let _savedActiveSubject: string | null = null;
 let _savedSubjects: string[] = [];
 let _savedPdfs: string[] = [];
+let _restoredFromIdb = false;
 
 const PdfManager = () => {
   const [subjects, _setSubjects] = useState<string[]>(_savedSubjects);
@@ -32,9 +32,9 @@ const PdfManager = () => {
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [restoring, setRestoring] = useState(!_restoredFromIdb && !_savedDirHandle);
 
-  // Always use File System Access API for folder picking (works in both browser and Electron)
-  const isElectron = false;
+  const [browserSupported] = useState(() => 'showDirectoryPicker' in window);
 
   // Wrap setters to also persist to module-level
   const setSubjects = useCallback((val: string[] | ((prev: string[]) => string[])) => {
@@ -61,14 +61,37 @@ const PdfManager = () => {
     });
   }, []);
 
-  // ── Fallback for browser (File System Access API) ────────────────
   const [dirHandle, _setDirHandle] = useState<FileSystemDirectoryHandle | null>(_savedDirHandle);
-  const [browserSupported] = useState(() => 'showDirectoryPicker' in window);
 
   const setDirHandle = useCallback((handle: FileSystemDirectoryHandle | null) => {
     _savedDirHandle = handle;
     _setDirHandle(handle);
+    if (handle) saveFolderHandle(handle);
   }, []);
+
+  // Restore folder handle from IndexedDB on first mount
+  useEffect(() => {
+    if (_restoredFromIdb || _savedDirHandle) {
+      setRestoring(false);
+      return;
+    }
+    _restoredFromIdb = true;
+    (async () => {
+      try {
+        const handle = await loadFolderHandle();
+        if (handle) {
+          // Verify permission
+          const perm = await (handle as any).requestPermission({ mode: 'readwrite' });
+          if (perm === 'granted') {
+            setDirHandle(handle);
+          }
+        }
+      } catch {
+        // permission denied or handle expired
+      }
+      setRestoring(false);
+    })();
+  }, [setDirHandle]);
 
   // Load subjects
   const loadSubjects = useCallback(async () => {
@@ -139,7 +162,6 @@ const PdfManager = () => {
     }
   };
 
-  // Handle file selection from the hidden input
   const handleFileInputChange = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!activeSubject || !dirHandle) return;
     const files = e.target.files;
@@ -156,7 +178,6 @@ const PdfManager = () => {
     } catch (err: any) {
       setError(`Could not save PDF: ${err?.message || 'unknown error'}`);
     }
-    // Reset input so same file can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, [activeSubject, dirHandle, loadPdfs]);
 
@@ -198,7 +219,6 @@ const PdfManager = () => {
     setViewPdfUrl(null);
   };
 
-  // ── Browser fallback: pick folder ────────────────────────────────
   const pickFolder = async () => {
     try {
       const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
@@ -218,11 +238,24 @@ const PdfManager = () => {
     p.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // ── Restoring from IDB ─────────────────────────────────────────
+  if (restoring) {
+    return (
+      <div className="space-y-4">
+        <h2 className="font-display text-xl font-bold text-foreground">Study Materials</h2>
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          <span className="ml-2 text-sm text-muted-foreground">Restoring folder…</span>
+        </div>
+      </div>
+    );
+  }
+
   // ── No folder picked yet ────────────────────────────────────────
   if (!dirHandle) {
     return (
       <div className="space-y-4">
-        <h2 className="font-display text-xl font-bold text-foreground">PDF Manager</h2>
+        <h2 className="font-display text-xl font-bold text-foreground">Study Materials</h2>
         {!browserSupported ? (
           <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-destructive mt-0.5" />
@@ -261,7 +294,6 @@ const PdfManager = () => {
   // ── Main UI ─────────────────────────────────────────────────────
   return (
     <div className="space-y-4">
-      {/* Hidden persistent file input for PDF uploads */}
       <input
         ref={fileInputRef}
         type="file"
@@ -273,7 +305,7 @@ const PdfManager = () => {
 
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-display text-xl font-bold text-foreground">PDF Manager</h2>
+          <h2 className="font-display text-xl font-bold text-foreground">Study Materials</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
             Local folder &middot; {subjects.length} subject{subjects.length !== 1 ? 's' : ''}
           </p>
