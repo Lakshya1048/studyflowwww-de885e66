@@ -9,7 +9,9 @@ import ProgressTracker from '@/components/ProgressTracker';
 import DoubtSolver from '@/components/DoubtSolver';
 import SettingsPanel from '@/components/SettingsPanel';
 import SplashScreen from '@/components/SplashScreen';
+import FloatingTimer from '@/components/FloatingTimer';
 import { useProfile } from '@/hooks/useProfile';
+import { useFullscreenToggle } from '@/hooks/useFullscreen';
 import type { TabId, StreakData, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useStudyNotifications } from '@/hooks/useStudyNotifications';
@@ -23,9 +25,14 @@ const Index = () => {
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+  const [endTime] = useLocalStorage<number | null>('studyflow-timer-end', null);
 
   useStudyNotifications(profile?.display_name);
+  useFullscreenToggle();
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Show floating timer when not on timer tab and timer is running
+  const showFloatingTimer = activeTab !== 'timer' && !!endTime && endTime > Date.now();
 
   useEffect(() => {
     const saved = localStorage.getItem('studyflow-theme');
@@ -96,6 +103,7 @@ const Index = () => {
       </AnimatePresence>
 
       <OfflineIndicator />
+      <FloatingTimer visible={showFloatingTimer} onGoToTimer={() => setActiveTab('timer')} />
       <SettingsPanel
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
