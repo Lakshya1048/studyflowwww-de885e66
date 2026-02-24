@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
 
-// 10 MB limit per file — keeps edge function safely under memory limits
+// 10 MB limit per file
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 type Attachment = {
@@ -56,7 +56,7 @@ const DoubtSolver = () => {
     if (oversized.length > 0) {
       toast({
         title: 'File too large',
-        description: `Max size is 10 MB per file. "${oversized[0].name}" is ${(oversized[0].size / 1024 / 1024).toFixed(1)} MB. For large PDFs, try taking a screenshot of the relevant page.`,
+        description: `Max size is 10 MB per file. "${oversized[0].name}" is ${(oversized[0].size / 1024 / 1024).toFixed(1)} MB.`,
         variant: 'destructive',
       });
       e.target.value = '';
@@ -127,7 +127,7 @@ const DoubtSolver = () => {
         } else if (resp.status === 402) {
           toast({ title: 'Usage limit reached', description: 'AI usage limit reached. Please try again later.', variant: 'destructive' });
         } else if (resp.status === 546) {
-          toast({ title: 'File too large for AI', description: 'The attached file is too large to process. Please use a smaller image or a shorter PDF (under 4 MB).', variant: 'destructive' });
+          toast({ title: 'File too large for AI', description: 'The attached file is too large to process.', variant: 'destructive' });
         } else {
           throw new Error(err.error || 'Failed to get response');
         }
@@ -209,7 +209,7 @@ const DoubtSolver = () => {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 mb-4 pr-1">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
         {messages.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <Bot className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -237,11 +237,11 @@ const DoubtSolver = () => {
               className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
             >
               {msg.role === 'assistant' && (
-                <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0 mt-1">
                   <Bot className="w-4 h-4 text-primary-foreground" />
                 </div>
               )}
-              <div className="max-w-[85%] space-y-2">
+              <div className={`${msg.role === 'user' ? 'max-w-[80%]' : 'max-w-[90%] flex-1 min-w-0'} space-y-2`}>
                 {msg.attachments && msg.attachments.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {msg.attachments.map((a, ai) => (
@@ -261,14 +261,27 @@ const DoubtSolver = () => {
 
                 {(msg.content || msg.role === 'assistant') && (
                   <div
-                    className={`rounded-xl px-4 py-3 text-sm ${
+                    className={`rounded-xl text-sm ${
                       msg.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-card border border-border card-shadow'
+                        ? 'bg-primary text-primary-foreground px-4 py-3'
+                        : 'bg-card border border-border card-shadow px-5 py-4'
                     }`}
                   >
                     {msg.role === 'assistant' ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:my-1 [&>ul]:my-1 [&>ol]:my-1">
+                      <div className="prose prose-sm dark:prose-invert max-w-none
+                        [&>p]:my-2 [&>p]:leading-relaxed
+                        [&>ul]:my-2 [&>ol]:my-2
+                        [&>ul>li]:my-1 [&>ol>li]:my-1
+                        [&>h1]:text-lg [&>h1]:font-bold [&>h1]:mt-4 [&>h1]:mb-2
+                        [&>h2]:text-base [&>h2]:font-bold [&>h2]:mt-3 [&>h2]:mb-2
+                        [&>h3]:text-sm [&>h3]:font-semibold [&>h3]:mt-3 [&>h3]:mb-1
+                        [&>pre]:bg-muted [&>pre]:rounded-lg [&>pre]:p-3 [&>pre]:my-3 [&>pre]:overflow-x-auto [&>pre]:text-xs
+                        [&>blockquote]:border-l-4 [&>blockquote]:border-primary/30 [&>blockquote]:pl-4 [&>blockquote]:py-1 [&>blockquote]:my-3 [&>blockquote]:bg-muted/50 [&>blockquote]:rounded-r-lg
+                        [&>hr]:my-4 [&>hr]:border-border
+                        [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_code]:font-mono
+                        [&>table]:w-full [&>table]:text-xs [&_th]:bg-muted [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_td]:px-3 [&_td]:py-2 [&_td]:border-t [&_td]:border-border
+                        [&_strong]:font-semibold [&_strong]:text-foreground
+                      ">
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
                     ) : (
@@ -279,7 +292,7 @@ const DoubtSolver = () => {
               </div>
 
               {msg.role === 'user' && (
-                <div className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0 mt-1">
+                <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0 mt-1">
                   <User className="w-4 h-4 text-secondary-foreground" />
                 </div>
               )}
@@ -289,7 +302,7 @@ const DoubtSolver = () => {
 
         {isLoading && messages[messages.length - 1]?.role === 'user' && (
           <div className="flex gap-3">
-            <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
               <Bot className="w-4 h-4 text-primary-foreground" />
             </div>
             <div className="bg-card border border-border card-shadow rounded-xl px-4 py-3">
@@ -325,7 +338,6 @@ const DoubtSolver = () => {
 
       {/* Input row */}
       <div className="flex gap-2 items-end">
-        {/* Hidden file input */}
         <input
           ref={fileInputRef}
           type="file"
@@ -338,7 +350,7 @@ const DoubtSolver = () => {
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={isLoading}
-          title="Attach image or PDF (max 4 MB)"
+          title="Attach image or PDF"
           className="flex-shrink-0 p-2.5 rounded-lg border border-input text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
         >
           <Paperclip className="w-4 h-4" />

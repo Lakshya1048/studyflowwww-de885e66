@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Target, Save, Moon, Sun, Trash2, Bell, BellOff, Clock, Volume2, VolumeX } from 'lucide-react';
+import { X, User, Target, Save, Moon, Sun, Trash2, Bell, BellOff, Clock, Volume2, VolumeX, Shield, Palette, Info, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,11 +11,15 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 interface AppSettings {
   notificationsEnabled: boolean;
   quietHoursEnabled: boolean;
-  quietHoursStart: number; // 0-23
-  quietHoursEnd: number;   // 0-23
+  quietHoursStart: number;
+  quietHoursEnd: number;
   soundEnabled: boolean;
   autoStartBreak: boolean;
   showStreakOnDashboard: boolean;
+  compactMode: boolean;
+  weekStartsMonday: boolean;
+  defaultTimerMinutes: number;
+  showRevisionReminders: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -26,6 +30,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   soundEnabled: true,
   autoStartBreak: false,
   showStreakOnDashboard: true,
+  compactMode: false,
+  weekStartsMonday: true,
+  defaultTimerMinutes: 25,
+  showRevisionReminders: true,
 };
 
 interface SettingsPanelProps {
@@ -51,7 +59,6 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [settings, setSettings] = useLocalStorage<AppSettings>('studyflow-settings', DEFAULT_SETTINGS);
 
-  // Sync when profile changes
   useEffect(() => {
     if (profile) {
       setName(profile.display_name || '');
@@ -80,8 +87,25 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
     if (!confirm('Clear all local study data (tasks, sessions, timer)? This cannot be undone.')) return;
     ['studyflow-tasks', 'studyflow-sessions', 'studyflow-timer-end', 'studyflow-timer-subject',
       'studyflow-timer-task', 'studyflow-focus-duration', 'studyflow-break-duration',
-      'studyflow-task-minutes', 'studyflow-session-start', 'studyflow-session-saved-mins'].forEach((k) => localStorage.removeItem(k));
+      'studyflow-task-minutes', 'studyflow-session-start', 'studyflow-session-saved-mins',
+      'studyflow-revisions'].forEach((k) => localStorage.removeItem(k));
     toast({ title: 'Study data cleared' });
+  };
+
+  const exportData = () => {
+    const data: Record<string, unknown> = {};
+    ['studyflow-tasks', 'studyflow-sessions', 'studyflow-revisions', 'studyflow-task-minutes', 'studyflow-profile', 'studyflow-settings'].forEach((k) => {
+      const val = localStorage.getItem(k);
+      if (val) data[k] = JSON.parse(val);
+    });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `studyflow-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Data exported ✓' });
   };
 
   return (
@@ -111,7 +135,7 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
-              {/* Profile section */}
+              {/* Profile */}
               <section>
                 <div className="flex items-center gap-2 mb-3">
                   <User className="w-4 h-4 text-primary" />
@@ -119,11 +143,7 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
                 </div>
                 <div className="space-y-1.5">
                   <Label>Display Name</Label>
-                  <Input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Your name"
-                  />
+                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
                   <p className="text-xs text-muted-foreground">Shown in greeting on dashboard</p>
                 </div>
               </section>
@@ -149,14 +169,7 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
                       </button>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground">Or enter a custom value:</p>
-                  <Input
-                    type="number"
-                    min={10}
-                    max={480}
-                    value={goalMinutes}
-                    onChange={(e) => setGoalMinutes(Number(e.target.value))}
-                  />
+                  <Input type="number" min={10} max={480} value={goalMinutes} onChange={(e) => setGoalMinutes(Number(e.target.value))} />
                 </div>
               </section>
 
@@ -209,13 +222,17 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
                           ))}
                         </select>
                       </div>
-                      <p className="text-xs text-muted-foreground">No notifications between these hours</p>
                     </div>
                   )}
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-foreground">Revision reminders</span>
+                    <Toggle checked={settings.showRevisionReminders} onChange={(v) => updateSetting('showRevisionReminders', v)} />
+                  </div>
                 </div>
               </section>
 
-              {/* Timer preferences */}
+              {/* Timer */}
               <section>
                 <div className="flex items-center gap-2 mb-3">
                   <Clock className="w-4 h-4 text-primary" />
@@ -233,12 +250,26 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
                     <span className="text-sm text-foreground">Auto-start breaks</span>
                     <Toggle checked={settings.autoStartBreak} onChange={(v) => updateSetting('autoStartBreak', v)} />
                   </div>
+                  <div>
+                    <Label className="text-xs">Default focus (min)</Label>
+                    <Input
+                      type="number"
+                      min={5}
+                      max={180}
+                      value={settings.defaultTimerMinutes}
+                      onChange={(e) => updateSetting('defaultTimerMinutes', Number(e.target.value))}
+                      className="mt-1"
+                    />
+                  </div>
                 </div>
               </section>
 
               {/* Appearance */}
               <section>
-                <h3 className="text-sm font-semibold text-foreground mb-3">Appearance</h3>
+                <div className="flex items-center gap-2 mb-3">
+                  <Palette className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Appearance</h3>
+                </div>
                 <button
                   onClick={toggleTheme}
                   className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-secondary hover:bg-muted transition-colors"
@@ -246,18 +277,52 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
                   <span className="text-sm text-foreground">{dark ? 'Dark Mode' : 'Light Mode'}</span>
                   {dark ? <Moon className="w-4 h-4 text-muted-foreground" /> : <Sun className="w-4 h-4 text-muted-foreground" />}
                 </button>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-sm text-foreground">Compact mode</span>
+                  <Toggle checked={settings.compactMode} onChange={(v) => updateSetting('compactMode', v)} />
+                </div>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-sm text-foreground">Week starts Monday</span>
+                  <Toggle checked={settings.weekStartsMonday} onChange={(v) => updateSetting('weekStartsMonday', v)} />
+                </div>
               </section>
 
-              {/* Danger zone */}
+              {/* Data & Privacy */}
               <section>
-                <h3 className="text-sm font-semibold text-destructive mb-3">Data</h3>
-                <button
-                  onClick={clearStudyData}
-                  className="w-full flex items-center gap-2 px-4 py-3 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/5 transition-colors text-sm"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Clear all study data
-                </button>
+                <div className="flex items-center gap-2 mb-3">
+                  <Shield className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Data & Privacy</h3>
+                </div>
+                <div className="space-y-2">
+                  <button
+                    onClick={exportData}
+                    className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-secondary hover:bg-muted transition-colors text-sm text-foreground"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export all data (JSON)
+                  </button>
+                  <button
+                    onClick={clearStudyData}
+                    className="w-full flex items-center gap-2 px-4 py-3 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/5 transition-colors text-sm"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Clear all study data
+                  </button>
+                </div>
+              </section>
+
+              {/* About */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Info className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">About</h3>
+                </div>
+                <div className="text-xs text-muted-foreground space-y-1 p-3 rounded-lg bg-muted/50">
+                  <p><strong className="text-foreground">StudyFlow</strong> v1.0.0</p>
+                  <p>© {new Date().getFullYear()} StudyFlow. All rights reserved.</p>
+                  <p>Built for focused, distraction-free studying.</p>
+                  <p className="pt-1">Your data is stored locally on your device. No account required.</p>
+                </div>
               </section>
             </div>
 
