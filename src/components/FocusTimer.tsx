@@ -63,9 +63,9 @@ const FocusTimer = () => {
     } else if (endTime && endTime <= Date.now()) {
       // Timer expired while closed — save the accumulated time
       if (sessionStartTime && timerMode !== 'break') {
-        const totalElapsed = Math.floor((Date.now() - sessionStartTime) / 60000);
+        const totalElapsed = (Date.now() - sessionStartTime) / 60000;
         const unsaved = Math.max(0, totalElapsed - savedMinutes);
-        if (unsaved > 0) {
+        if (unsaved >= 0.1) {
           savePartialSession(unsaved);
         }
       }
@@ -89,20 +89,21 @@ const FocusTimer = () => {
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
 
-  // Save a partial session
+  // Save a partial session (supports fractional minutes)
   const savePartialSession = useCallback((mins: number) => {
     if (mins <= 0) return;
+    const rounded = Math.round(mins * 10) / 10; // round to 0.1
     const session: StudySession = {
       id: Date.now().toString(),
       date: new Date().toISOString().split('T')[0],
-      duration: mins,
+      duration: rounded,
       subject: subject || 'General',
     };
     setSessions((prev) => [session, ...prev]);
     if (selectedTaskId) {
       setTaskMinutes((prev) => ({
         ...prev,
-        [selectedTaskId]: (prev[selectedTaskId] || 0) + mins,
+        [selectedTaskId]: (prev[selectedTaskId] || 0) + rounded,
       }));
     }
   }, [subject, setSessions, selectedTaskId, setTaskMinutes]);
@@ -111,11 +112,12 @@ const FocusTimer = () => {
   useEffect(() => {
     if (isRunning && !isBreak && sessionStartTime) {
       saveIntervalRef.current = setInterval(() => {
-        const totalElapsed = Math.floor((Date.now() - sessionStartTime) / 60000);
-        const unsaved = totalElapsed - savedMinutes;
-        if (unsaved >= 1) {
+        const totalElapsedMs = Date.now() - sessionStartTime;
+        const totalElapsedMins = totalElapsedMs / 60000;
+        const unsaved = totalElapsedMins - savedMinutes;
+        if (unsaved >= 0.5) { // save every 0.5 min (30s) of unsaved time
           savePartialSession(unsaved);
-          setSavedMinutes(totalElapsed);
+          setSavedMinutes(totalElapsedMins);
         }
       }, SAVE_INTERVAL_MS);
     }
@@ -124,7 +126,7 @@ const FocusTimer = () => {
 
   const finishSession = useCallback(() => {
     if (!isBreak && sessionStartTime) {
-      const totalElapsed = Math.floor((Date.now() - sessionStartTime) / 60000);
+      const totalElapsed = (Date.now() - sessionStartTime) / 60000;
       const unsaved = Math.max(0, totalElapsed - savedMinutes);
       if (unsaved > 0) {
         savePartialSession(unsaved);
@@ -182,9 +184,9 @@ const FocusTimer = () => {
     clearInterval(intervalRef.current);
     // Save any unsaved minutes on pause
     if (!isBreak && sessionStartTime) {
-      const totalElapsed = Math.floor((Date.now() - sessionStartTime) / 60000);
+      const totalElapsed = (Date.now() - sessionStartTime) / 60000;
       const unsaved = totalElapsed - savedMinutes;
-      if (unsaved >= 1) {
+      if (unsaved >= 0.1) {
         savePartialSession(unsaved);
         setSavedMinutes(totalElapsed);
       }
@@ -194,9 +196,9 @@ const FocusTimer = () => {
   const reset = () => {
     // Save any unsaved progress before resetting
     if (isRunning && !isBreak && sessionStartTime) {
-      const totalElapsed = Math.floor((Date.now() - sessionStartTime) / 60000);
+      const totalElapsed = (Date.now() - sessionStartTime) / 60000;
       const unsaved = totalElapsed - savedMinutes;
-      if (unsaved >= 1) {
+      if (unsaved >= 0.1) {
         savePartialSession(unsaved);
       }
     }
@@ -426,7 +428,7 @@ const FocusTimer = () => {
               <input
                 type="number"
                 min="1"
-                max="180"
+                max="600"
                 value={customMinutes}
                 onChange={(e) => setCustomMinutes(e.target.value)}
                 placeholder="Custom (min)"
@@ -437,7 +439,7 @@ const FocusTimer = () => {
                 variant="outline"
                 onClick={() => {
                   const val = parseInt(customMinutes);
-                  if (val > 0 && val <= 180) {
+                  if (val > 0 && val <= 600) {
                     setCustomTime(val);
                     setCustomMinutes('');
                   }
@@ -498,7 +500,7 @@ const FocusTimer = () => {
           <p className="text-xs text-muted-foreground">Sessions Today</p>
         </div>
         <div className="p-3 rounded-lg bg-card border border-border card-shadow text-center">
-          <p className="text-2xl font-display font-bold text-foreground">{todayMinutes}</p>
+          <p className="text-2xl font-display font-bold text-foreground">{Math.round(todayMinutes)}</p>
           <p className="text-xs text-muted-foreground">Minutes Studied</p>
         </div>
       </div>

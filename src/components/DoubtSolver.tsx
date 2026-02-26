@@ -101,11 +101,15 @@ const DoubtSolver = () => {
     let assistantSoFar = '';
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 120000); // 2min timeout
+
       const resp = await fetch(CHAT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({
           messages: updatedMessages.map((m) => ({
@@ -118,7 +122,10 @@ const DoubtSolver = () => {
             })),
           })),
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: 'Failed to get response' }));
@@ -179,8 +186,15 @@ const DoubtSolver = () => {
         }
       }
     } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : 'Something went wrong';
-      setMessages((prev) => [...prev, { role: 'assistant', content: `❌ Error: ${errorMsg}` }]);
+      let errorMsg = 'Something went wrong';
+      if (e instanceof DOMException && e.name === 'AbortError') {
+        errorMsg = 'Request timed out. Please try again with a shorter question.';
+      } else if (e instanceof TypeError && e.message.includes('fetch')) {
+        errorMsg = 'Network error. Please check your internet connection and try again.';
+      } else if (e instanceof Error) {
+        errorMsg = e.message;
+      }
+      setMessages((prev) => [...prev, { role: 'assistant', content: `❌ ${errorMsg}` }]);
     } finally {
       setIsLoading(false);
       scrollToBottom();
