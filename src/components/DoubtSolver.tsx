@@ -1,13 +1,13 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Trash2, Bot, User, Loader2, Paperclip, X, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import ReactMarkdown from 'react-markdown';
 import { useToast } from '@/hooks/use-toast';
 
+// 10 MB limit per file — keeps edge function safely under memory limits
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/doubt-solver`;
-const ACCEPTED = 'image/png,image/jpeg,image/webp,image/gif,application/pdf';
 
 type Attachment = {
   name: string;
@@ -21,6 +21,9 @@ type Message = {
   content: string;
   attachments?: Attachment[];
 };
+
+const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/doubt-solver`;
+const ACCEPTED = 'image/png,image/jpeg,image/webp,image/gif,application/pdf';
 
 const fileToBase64 = (file: File): Promise<string> =>
   new Promise((res, rej) => {
@@ -38,21 +41,24 @@ const DoubtSolver = () => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
-  const scrollToBottom = useCallback(() => {
+  const scrollToBottom = () => {
     setTimeout(() => {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     }, 50);
-  }, []);
+  };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
     const oversized = files.filter((f) => f.size > MAX_FILE_BYTES);
-    if (oversized.length) {
-      toast({ title: 'File too large', description: `Max 10 MB. "${oversized[0].name}" is too big.`, variant: 'destructive' });
+    if (oversized.length > 0) {
+      toast({
+        title: 'File too large',
+        description: `Max size is 10 MB per file. "${oversized[0].name}" is ${(oversized[0].size / 1024 / 1024).toFixed(1)} MB. For large PDFs, try taking a screenshot of the relevant page.`,
+        variant: 'destructive',
+      });
       e.target.value = '';
       return;
     }
@@ -60,11 +66,12 @@ const DoubtSolver = () => {
     const newAttachments: Attachment[] = await Promise.all(
       files.map(async (file) => {
         const base64 = await fileToBase64(file);
+        const isImage = file.type.startsWith('image/');
         return {
           name: file.name,
           mimeType: file.type,
           base64,
-          preview: file.type.startsWith('image/') ? `data:${file.type};base64,${base64}` : undefined,
+          preview: isImage ? `data:${file.type};base64,${base64}` : undefined,
         };
       })
     );
@@ -84,18 +91,12 @@ const DoubtSolver = () => {
       content: text,
       attachments: attachments.length > 0 ? [...attachments] : undefined,
     };
-
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput('');
     setAttachments([]);
     setIsLoading(true);
     scrollToBottom();
-
-    // Abort any previous request
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
 
     let assistantSoFar = '';
 
@@ -105,25 +106,31 @@ const DoubtSolver = () => {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({
-          messages: updatedMessages
-            .filter((m) => !(m.role === 'assistant' && m.content.startsWith('❌')))
-            .map((m) => ({
-              role: m.role,
-              content: m.content,
-              attachments: m.attachments?.map((a) => ({ name: a.name, mimeType: a.mimeType, base64: a.base64 })),
+          messages: updatedMessages.map((m) => ({
+            role: m.role,
+            content: m.content,
+            attachments: m.attachments?.map((a) => ({
+              name: a.name,
+              mimeType: a.mimeType,
+              base64: a.base64,
             })),
+          })),
         }),
-        signal: controller.signal,
       });
 
       if (!resp.ok) {
-        const errBody = await resp.json().catch(() => ({ error: 'Request failed' }));
-        const errMsg = errBody.error || `Error ${resp.status}`;
-        toast({ title: 'AI Error', description: errMsg, variant: 'destructive' });
-        setMessages((prev) => [...prev, { role: 'assistant', content: `❌ ${errMsg}` }]);
+        const err = await resp.json().catch(() => ({ error: 'Failed to get response' }));
+        if (resp.status === 429) {
+          toast({ title: 'Too many requests', description: 'Please wait a moment and try again.', variant: 'destructive' });
+        } else if (resp.status === 402) {
+          toast({ title: 'Usage limit reached', description: 'AI usage limit reached. Please try again later.', variant: 'destructive' });
+        } else if (resp.status === 546) {
+          toast({ title: 'File too large for AI', description: 'The attached file is too large to process. Please use a smaller image or a shorter PDF (under 4 MB).', variant: 'destructive' });
+        } else {
+          throw new Error(err.error || 'Failed to get response');
+        }
         setIsLoading(false);
         return;
       }
@@ -133,19 +140,6 @@ const DoubtSolver = () => {
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
       let textBuffer = '';
-
-      const upsertAssistant = (content: string) => {
-        assistantSoFar += content;
-        const snapshot = assistantSoFar;
-        setMessages((prev) => {
-          const last = prev[prev.length - 1];
-          if (last?.role === 'assistant') {
-            return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: snapshot } : m));
-          }
-          return [...prev, { role: 'assistant', content: snapshot }];
-        });
-        scrollToBottom();
-      };
 
       while (true) {
         const { done, value } = await reader.read();
@@ -167,7 +161,17 @@ const DoubtSolver = () => {
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content;
-            if (content) upsertAssistant(content);
+            if (content) {
+              assistantSoFar += content;
+              setMessages((prev) => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'assistant') {
+                  return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+                }
+                return [...prev, { role: 'assistant', content: assistantSoFar }];
+              });
+              scrollToBottom();
+            }
           } catch {
             textBuffer = line + '\n' + textBuffer;
             break;
@@ -175,14 +179,8 @@ const DoubtSolver = () => {
         }
       }
     } catch (e) {
-      if (e instanceof DOMException && e.name === 'AbortError') return;
-
-      const errorMsg = e instanceof TypeError && e.message.includes('fetch')
-        ? 'Network error. Check your internet connection.'
-        : e instanceof Error ? e.message : 'Something went wrong';
-
-      setMessages((prev) => [...prev, { role: 'assistant', content: `❌ ${errorMsg}` }]);
-      toast({ title: 'Error', description: errorMsg, variant: 'destructive' });
+      const errorMsg = e instanceof Error ? e.message : 'Something went wrong';
+      setMessages((prev) => [...prev, { role: 'assistant', content: `❌ Error: ${errorMsg}` }]);
     } finally {
       setIsLoading(false);
       scrollToBottom();
@@ -196,8 +194,6 @@ const DoubtSolver = () => {
     }
   };
 
-  const suggestions = ['What is the derivative of sin(x)?', 'Balance: Fe + O₂ → Fe₂O₃', 'Explain electromagnetic induction'];
-
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] md:h-[calc(100vh-3rem)]">
       <div className="flex items-center justify-between mb-4">
@@ -206,21 +202,25 @@ const DoubtSolver = () => {
           <p className="text-sm text-muted-foreground">Ask your doubts</p>
         </div>
         {messages.length > 0 && (
-          <Button size="sm" variant="outline" onClick={() => { setMessages([]); abortRef.current?.abort(); }} className="gap-1.5">
+          <Button size="sm" variant="outline" onClick={() => setMessages([])} className="gap-1.5">
             <Trash2 className="w-4 h-4" /> Clear
           </Button>
         )}
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-3 mb-4 pr-1">
         {messages.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
             <Bot className="w-12 h-12 mx-auto mb-3 opacity-30" />
             <p className="text-sm font-medium">Ask your doubts</p>
             <div className="flex flex-wrap gap-2 justify-center mt-4">
-              {suggestions.map((q) => (
-                <button key={q} onClick={() => setInput(q)} className="text-xs px-3 py-1.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-muted transition-colors">
+              {['What is the derivative of sin(x)?', 'Balance: Fe + O₂ → Fe₂O₃', 'Explain electromagnetic induction'].map((q) => (
+                <button
+                  key={q}
+                  onClick={() => setInput(q)}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-secondary text-secondary-foreground hover:bg-muted transition-colors"
+                >
                   {q}
                 </button>
               ))}
@@ -228,53 +228,68 @@ const DoubtSolver = () => {
           </div>
         )}
 
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            {msg.role === 'assistant' && (
-              <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0 mt-1">
-                <Bot className="w-4 h-4 text-primary-foreground" />
-              </div>
-            )}
-            <div className={`${msg.role === 'user' ? 'max-w-[80%]' : 'max-w-[90%] flex-1 min-w-0'} space-y-2`}>
-              {msg.attachments && msg.attachments.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {msg.attachments.map((a, ai) => (
-                    <div key={ai} className="rounded-lg overflow-hidden border border-border bg-card">
-                      {a.preview ? (
-                        <img src={a.preview} alt={a.name} className="max-h-40 max-w-xs object-cover" />
-                      ) : (
-                        <div className="flex items-center gap-2 px-3 py-2">
-                          <FileText className="w-4 h-4 text-primary" />
-                          <span className="text-xs text-foreground truncate max-w-[160px]">{a.name}</span>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+        <AnimatePresence>
+          {messages.map((msg, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {msg.role === 'assistant' && (
+                <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0 mt-1">
+                  <Bot className="w-4 h-4 text-primary-foreground" />
                 </div>
               )}
-              {(msg.content || msg.role === 'assistant') && (
-                <div className={`rounded-xl text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground px-4 py-3' : 'bg-card border border-border card-shadow px-5 py-4'}`}>
-                  {msg.role === 'assistant' ? (
-                    <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:my-2 [&>p]:leading-relaxed [&>ul]:my-2 [&>ol]:my-2 [&>pre]:bg-muted [&>pre]:rounded-lg [&>pre]:p-3 [&>pre]:my-3 [&>pre]:overflow-x-auto [&>pre]:text-xs [&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_strong]:font-semibold [&_strong]:text-foreground">
-                      <ReactMarkdown>{msg.content}</ReactMarkdown>
-                    </div>
-                  ) : (
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
-                  )}
+              <div className="max-w-[85%] space-y-2">
+                {msg.attachments && msg.attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {msg.attachments.map((a, ai) => (
+                      <div key={ai} className="rounded-lg overflow-hidden border border-border bg-card">
+                        {a.preview ? (
+                          <img src={a.preview} alt={a.name} className="max-h-40 max-w-xs object-cover" />
+                        ) : (
+                          <div className="flex items-center gap-2 px-3 py-2">
+                            <FileText className="w-4 h-4 text-primary" />
+                            <span className="text-xs text-foreground truncate max-w-[160px]">{a.name}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {(msg.content || msg.role === 'assistant') && (
+                  <div
+                    className={`rounded-xl px-4 py-3 text-sm ${
+                      msg.role === 'user'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-card border border-border card-shadow'
+                    }`}
+                  >
+                    {msg.role === 'assistant' ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:my-1 [&>ul]:my-1 [&>ol]:my-1">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {msg.role === 'user' && (
+                <div className="w-7 h-7 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0 mt-1">
+                  <User className="w-4 h-4 text-secondary-foreground" />
                 </div>
               )}
-            </div>
-            {msg.role === 'user' && (
-              <div className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0 mt-1">
-                <User className="w-4 h-4 text-secondary-foreground" />
-              </div>
-            )}
-          </div>
-        ))}
+            </motion.div>
+          ))}
+        </AnimatePresence>
 
         {isLoading && messages[messages.length - 1]?.role === 'user' && (
           <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
+            <div className="w-7 h-7 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
               <Bot className="w-4 h-4 text-primary-foreground" />
             </div>
             <div className="bg-card border border-border card-shadow rounded-xl px-4 py-3">
@@ -284,7 +299,7 @@ const DoubtSolver = () => {
         )}
       </div>
 
-      {/* Pending attachments */}
+      {/* Pending attachment previews */}
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-2">
           {attachments.map((a, i) => (
@@ -297,7 +312,10 @@ const DoubtSolver = () => {
                   <span className="text-xs text-foreground truncate">{a.name}</span>
                 </div>
               )}
-              <button onClick={() => removeAttachment(i)} className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-background/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => removeAttachment(i)}
+                className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-background/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
                 <X className="w-3 h-3 text-foreground" />
               </button>
             </div>
@@ -305,14 +323,42 @@ const DoubtSolver = () => {
         </div>
       )}
 
-      {/* Input */}
+      {/* Input row */}
       <div className="flex gap-2 items-end">
-        <input ref={fileInputRef} type="file" accept={ACCEPTED} multiple className="hidden" onChange={handleFileSelect} />
-        <button onClick={() => fileInputRef.current?.click()} disabled={isLoading} title="Attach image or PDF" className="flex-shrink-0 p-2.5 rounded-lg border border-input text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50">
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept={ACCEPTED}
+          capture="environment"
+          multiple
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isLoading}
+          title="Attach image or PDF (max 4 MB)"
+          className="flex-shrink-0 p-2.5 rounded-lg border border-input text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+        >
           <Paperclip className="w-4 h-4" />
         </button>
-        <Textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Type your doubt… (Shift+Enter for new line)" rows={2} className="resize-none flex-1" disabled={isLoading} />
-        <Button onClick={sendMessage} disabled={isLoading || (!input.trim() && attachments.length === 0)} className="h-auto py-3">
+
+        <Textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Type your doubt… (Shift+Enter for new line)"
+          rows={2}
+          className="resize-none flex-1"
+          disabled={isLoading}
+        />
+
+        <Button
+          onClick={sendMessage}
+          disabled={isLoading || (!input.trim() && attachments.length === 0)}
+          className="h-auto py-3"
+        >
           <Send className="w-4 h-4" />
         </Button>
       </div>
