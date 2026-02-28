@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react';
-import { AnimatePresence } from 'framer-motion';
 import Sidebar from '@/components/Sidebar';
 import Dashboard from '@/components/Dashboard';
 import TaskManager from '@/components/TaskManager';
@@ -8,10 +7,7 @@ import PdfManager from '@/components/PdfManager';
 import ProgressTracker from '@/components/ProgressTracker';
 import DoubtSolver from '@/components/DoubtSolver';
 import SettingsPanel from '@/components/SettingsPanel';
-import SplashScreen from '@/components/SplashScreen';
-import FloatingTimer from '@/components/FloatingTimer';
 import { useProfile } from '@/hooks/useProfile';
-import { useFullscreenToggle } from '@/hooks/useFullscreen';
 import type { TabId, StreakData, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { useStudyNotifications } from '@/hooks/useStudyNotifications';
@@ -24,15 +20,9 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
-  const [endTime] = useLocalStorage<number | null>('studyflow-timer-end', null);
 
   useStudyNotifications(profile?.display_name);
-  useFullscreenToggle();
   const [settingsOpen, setSettingsOpen] = useState(false);
-
-  // Show floating timer when not on timer tab and timer is running
-  const showFloatingTimer = activeTab !== 'timer' && !!endTime && endTime > Date.now();
 
   useEffect(() => {
     const saved = localStorage.getItem('studyflow-theme');
@@ -98,12 +88,7 @@ const Index = () => {
 
   return (
     <>
-      <AnimatePresence>
-        {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
-      </AnimatePresence>
-
       <OfflineIndicator />
-      <FloatingTimer visible={showFloatingTimer} onGoToTimer={() => setActiveTab('timer')} />
       <SettingsPanel
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
@@ -155,7 +140,7 @@ const Index = () => {
                     activeTab === tab ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'
                   }`}
                 >
-                  {tab === 'doubts' ? 'Doubt Solver' : tab === 'pdfs' ? 'Study Materials' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {tab === 'doubts' ? 'Doubt Solver' : tab.charAt(0).toUpperCase() + tab.slice(1)}
                 </button>
               ))}
             </div>
