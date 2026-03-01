@@ -4,13 +4,24 @@ import { CheckSquare, Timer, TrendingUp, ArrowRight, FileText, Bell, X } from 'l
 import type { TabId, StudyTask, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { Profile } from '@/hooks/useProfile';
+import GamificationCard from '@/components/GamificationCard';
+import AchievementsGrid from '@/components/AchievementsGrid';
 
 interface DashboardProps {
   onNavigate: (tab: TabId) => void;
   profile: Profile;
+  gamification: {
+    level: number;
+    totalXP: number;
+    progressPercent: number;
+    xpInLevel: number;
+    xpNeeded: number;
+    streak: number;
+    achievements: { id: string; title: string; description: string; icon: string; unlockedAt?: string }[];
+  };
 }
 
-const Dashboard = ({ onNavigate, profile }: DashboardProps) => {
+const Dashboard = ({ onNavigate, profile, gamification }: DashboardProps) => {
   const today = new Date().toISOString().split('T')[0];
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
@@ -30,58 +41,23 @@ const Dashboard = ({ onNavigate, profile }: DashboardProps) => {
     return 'Good evening';
   }, []);
 
-  // Build notifications list
   const notifications = useMemo(() => {
     const items: { id: string; text: string; type: 'info' | 'warn' }[] = [];
-    if (overdueTasks.length > 0) {
-      items.push({ id: 'overdue', text: `You have ${overdueTasks.length} overdue task${overdueTasks.length > 1 ? 's' : ''}!`, type: 'warn' });
-    }
-    if (pendingTasks.length > 0) {
-      items.push({ id: 'pending', text: `${pendingTasks.length} task${pendingTasks.length > 1 ? 's' : ''} due today`, type: 'info' });
-    }
-    if (todaySubjects.length > 0) {
-      items.push({ id: 'revise', text: `Revise: ${todaySubjects.join(', ')}`, type: 'info' });
-    }
-    if (todayMinutes > 0) {
-      items.push({ id: 'studied', text: `You've studied ${todayMinutes}m today — keep it up!`, type: 'info' });
-    }
-    if (items.length === 0) {
-      items.push({ id: 'empty', text: 'No notifications yet. Start studying!', type: 'info' });
-    }
+    if (overdueTasks.length > 0) items.push({ id: 'overdue', text: `You have ${overdueTasks.length} overdue task${overdueTasks.length > 1 ? 's' : ''}!`, type: 'warn' });
+    if (pendingTasks.length > 0) items.push({ id: 'pending', text: `${pendingTasks.length} task${pendingTasks.length > 1 ? 's' : ''} due today`, type: 'info' });
+    if (todaySubjects.length > 0) items.push({ id: 'revise', text: `Revise: ${todaySubjects.join(', ')}`, type: 'info' });
+    if (todayMinutes > 0) items.push({ id: 'studied', text: `You've studied ${todayMinutes}m today — keep it up!`, type: 'info' });
+    if (items.length === 0) items.push({ id: 'empty', text: 'No notifications yet. Start studying!', type: 'info' });
     return items;
   }, [overdueTasks, pendingTasks, todaySubjects, todayMinutes]);
 
   const hasWarning = notifications.some((n) => n.type === 'warn');
 
   const quickCards = [
-    {
-      title: "Today's Tasks",
-      subtitle: `${pendingTasks.length} pending${overdueTasks.length ? `, ${overdueTasks.length} overdue` : ''}`,
-      icon: CheckSquare,
-      tab: 'tasks' as TabId,
-      gradient: 'gradient-accent',
-    },
-    {
-      title: 'Focus Timer',
-      subtitle: `${todayMinutes}m studied today`,
-      icon: Timer,
-      tab: 'timer' as TabId,
-      gradient: 'gradient-primary',
-    },
-    {
-      title: 'Study Materials',
-      subtitle: 'Your study PDFs',
-      icon: FileText,
-      tab: 'pdfs' as TabId,
-      gradient: 'gradient-accent',
-    },
-    {
-      title: 'Progress',
-      subtitle: `${todaySessions.length} sessions today`,
-      icon: TrendingUp,
-      tab: 'progress' as TabId,
-      gradient: 'gradient-primary',
-    },
+    { title: "Today's Tasks", subtitle: `${pendingTasks.length} pending${overdueTasks.length ? `, ${overdueTasks.length} overdue` : ''}`, icon: CheckSquare, tab: 'tasks' as TabId, gradient: 'gradient-accent' },
+    { title: 'Focus Timer', subtitle: `${todayMinutes}m studied today`, icon: Timer, tab: 'timer' as TabId, gradient: 'gradient-primary' },
+    { title: 'Study Materials', subtitle: 'Your study PDFs', icon: FileText, tab: 'pdfs' as TabId, gradient: 'gradient-accent' },
+    { title: 'Progress', subtitle: `${todaySessions.length} sessions today`, icon: TrendingUp, tab: 'progress' as TabId, gradient: 'gradient-primary' },
   ];
 
   return (
@@ -93,33 +69,17 @@ const Dashboard = ({ onNavigate, profile }: DashboardProps) => {
           </h1>
           <p className="text-muted-foreground mt-1">Ready to study? Here's your overview for today.</p>
         </div>
-
-        {/* Notification bell */}
         <div className="relative">
-          <button
-            onClick={() => setNotifOpen((v) => !v)}
-            className="relative p-2 rounded-xl bg-card border border-border hover:bg-muted transition-colors"
-          >
+          <button onClick={() => setNotifOpen((v) => !v)} className="relative p-2 rounded-xl bg-card border border-border hover:bg-muted transition-colors">
             <Bell className="w-5 h-5 text-foreground" />
-            {hasWarning && (
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />
-            )}
+            {hasWarning && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive" />}
           </button>
-
           <AnimatePresence>
             {notifOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 top-12 w-72 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden"
-              >
+              <motion.div initial={{ opacity: 0, y: -8, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.95 }} transition={{ duration: 0.15 }} className="absolute right-0 top-12 w-72 bg-card border border-border rounded-xl shadow-lg z-50 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                   <p className="text-sm font-semibold text-foreground">Notifications</p>
-                  <button onClick={() => setNotifOpen(false)} className="text-muted-foreground hover:text-foreground">
-                    <X className="w-4 h-4" />
-                  </button>
+                  <button onClick={() => setNotifOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
                 </div>
                 <div className="max-h-64 overflow-y-auto divide-y divide-border">
                   {notifications.map((n) => (
@@ -135,6 +95,9 @@ const Dashboard = ({ onNavigate, profile }: DashboardProps) => {
         </div>
       </motion.div>
 
+      {/* Gamification */}
+      <GamificationCard {...gamification} />
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {quickCards.map((card, i) => (
           <motion.button
@@ -143,7 +106,7 @@ const Dashboard = ({ onNavigate, profile }: DashboardProps) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 + i * 0.08 }}
             onClick={() => onNavigate(card.tab)}
-            className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border card-shadow hover:card-shadow-hover transition-shadow text-left group"
+            className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border card-shadow hover:card-shadow-hover transition-shadow text-left group active:scale-[0.98]"
           >
             <div className={`w-10 h-10 rounded-lg ${card.gradient} flex items-center justify-center flex-shrink-0`}>
               <card.icon className="w-5 h-5 text-primary-foreground" />
@@ -156,6 +119,9 @@ const Dashboard = ({ onNavigate, profile }: DashboardProps) => {
           </motion.button>
         ))}
       </div>
+
+      {/* Achievements */}
+      <AchievementsGrid achievements={gamification.achievements} />
 
       {/* Today's pending tasks */}
       {pendingTasks.length > 0 && (

@@ -1,10 +1,16 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Clock, CheckCircle2, Flame, Target } from 'lucide-react';
-import type { StudySession, StudyTask, StreakData } from '@/lib/types';
+import { TrendingUp, Clock, CheckCircle2, Target } from 'lucide-react';
+import type { StudySession, StudyTask } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import AchievementsGrid from '@/components/AchievementsGrid';
+import type { Achievement } from '@/hooks/useGamification';
 
-const ProgressTracker = () => {
+interface ProgressTrackerProps {
+  achievements: Achievement[];
+}
+
+const ProgressTracker = ({ achievements }: ProgressTrackerProps) => {
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
 
@@ -116,6 +122,11 @@ const ProgressTracker = () => {
           </div>
         </div>
       )}
+
+      {/* Achievements */}
+      <div className="p-4 rounded-lg bg-card border border-border card-shadow">
+        <AchievementsGrid achievements={achievements} />
+      </div>
     </div>
   );
 };
