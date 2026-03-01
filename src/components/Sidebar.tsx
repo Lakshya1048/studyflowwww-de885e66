@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckSquare, Timer, BarChart3, LayoutDashboard, Flame, Moon, Sun, MessageCircleQuestion, FileText, Settings, User } from 'lucide-react';
+import { CheckSquare, Timer, BarChart3, LayoutDashboard, Moon, Sun, MessageCircleQuestion, FileText, Settings, User } from 'lucide-react';
 import type { TabId, StreakData } from '@/lib/types';
 import type { Profile } from '@/hooks/useProfile';
+import GamificationCard from '@/components/GamificationCard';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -10,6 +11,14 @@ interface SidebarProps {
   streak: StreakData;
   onOpenSettings: () => void;
   profile: Profile;
+  gamification: {
+    level: number;
+    totalXP: number;
+    progressPercent: number;
+    xpInLevel: number;
+    xpNeeded: number;
+    streak: number;
+  };
 }
 
 const navItems: { id: TabId; label: string; icon: React.ElementType }[] = [
@@ -21,7 +30,7 @@ const navItems: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'progress', label: 'Progress', icon: BarChart3 },
 ];
 
-const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile }: SidebarProps) => {
+const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile, gamification }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
 
@@ -40,30 +49,18 @@ const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile }: Si
           <span className="text-primary-foreground text-xs font-bold">S</span>
         </div>
         {!collapsed && (
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="font-display text-lg font-bold text-sidebar-foreground"
-          >
+          <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="font-display text-lg font-bold text-sidebar-foreground">
             StudyFlow
           </motion.span>
         )}
       </div>
 
-      {/* Streak */}
-      <div className={`mx-3 mt-4 mb-2 rounded-lg bg-sidebar-accent p-3 ${collapsed ? 'flex justify-center' : ''}`}>
-        <div className={`flex items-center ${collapsed ? '' : 'gap-2'}`}>
-          <Flame className="w-5 h-5 text-streak flex-shrink-0" />
-          {!collapsed && (
-            <div>
-              <p className="text-xs text-muted-foreground">Current Streak</p>
-              <p className="font-display text-lg font-bold text-sidebar-foreground leading-tight">
-                {streak.currentStreak} day{streak.currentStreak !== 1 ? 's' : ''}
-              </p>
-            </div>
-          )}
+      {/* Gamification card */}
+      {!collapsed && (
+        <div className="mt-3">
+          <GamificationCard compact {...gamification} />
         </div>
-      </div>
+      )}
 
       {/* Nav */}
       <nav className="flex-1 px-2 py-2 space-y-1">
@@ -74,17 +71,11 @@ const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile }: Si
               key={item.id}
               onClick={() => onTabChange(item.id)}
               className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all relative ${
-                isActive
-                  ? 'bg-sidebar-accent text-sidebar-primary'
-                  : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
+                isActive ? 'bg-sidebar-accent text-sidebar-primary' : 'text-sidebar-foreground hover:bg-sidebar-accent/50'
               } ${collapsed ? 'justify-center' : ''}`}
             >
               {isActive && (
-                <motion.div
-                  layoutId="activeTab"
-                  className="absolute inset-0 bg-sidebar-accent rounded-lg"
-                  transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
-                />
+                <motion.div layoutId="activeTab" className="absolute inset-0 bg-sidebar-accent rounded-lg" transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }} />
               )}
               <item.icon className="w-4.5 h-4.5 relative z-10 flex-shrink-0" />
               {!collapsed && <span className="relative z-10">{item.label}</span>}
@@ -103,9 +94,7 @@ const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile }: Si
         </div>
         {!collapsed && (
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-xs font-semibold text-sidebar-foreground truncate">
-              {profile?.display_name || 'My Account'}
-            </p>
+            <p className="text-xs font-semibold text-sidebar-foreground truncate">{profile?.display_name || 'My Account'}</p>
             <p className="text-xs text-muted-foreground">Settings</p>
           </div>
         )}
@@ -113,19 +102,13 @@ const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile }: Si
       </button>
 
       {/* Theme toggle */}
-      <button
-        onClick={toggleTheme}
-        className="mx-3 mb-1 p-2 rounded-lg text-muted-foreground hover:bg-sidebar-accent flex items-center gap-2 text-sm transition-colors"
-      >
+      <button onClick={toggleTheme} className="mx-3 mb-1 p-2 rounded-lg text-muted-foreground hover:bg-sidebar-accent flex items-center gap-2 text-sm transition-colors">
         {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         {!collapsed && <span>{dark ? 'Light Mode' : 'Dark Mode'}</span>}
       </button>
 
       {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="m-3 p-2 rounded-lg text-muted-foreground hover:bg-sidebar-accent text-xs text-center transition-colors"
-      >
+      <button onClick={() => setCollapsed(!collapsed)} className="m-3 p-2 rounded-lg text-muted-foreground hover:bg-sidebar-accent text-xs text-center transition-colors">
         {collapsed ? '→' : '← Collapse'}
       </button>
     </aside>
