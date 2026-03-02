@@ -51,8 +51,8 @@ const FocusTimer = () => {
 
   // Realtime tracking: when the current session started
   const [sessionStartTime, setSessionStartTime] = useLocalStorage<number | null>('studyflow-session-start', null);
-  // Accumulated minutes already saved for the current running session
-  const [savedMinutes, setSavedMinutes] = useLocalStorage<number>('studyflow-session-saved-mins', 0);
+  // The ID of the current running session (so we update it instead of creating duplicates)
+  const [activeSessionId, setActiveSessionId] = useLocalStorage<string | null>('studyflow-active-session-id', null);
 
   const [isRunning, setIsRunning] = useState(false);
   const [isBreak, setIsBreak] = useState(false);
@@ -95,14 +95,13 @@ const FocusTimer = () => {
       // Timer expired while closed — save the accumulated time
       if (sessionStartTime && timerMode !== 'break') {
         const totalElapsed = (Date.now() - sessionStartTime) / 60000;
-        const unsaved = Math.max(0, totalElapsed - savedMinutes);
-        if (unsaved >= 0.1) {
-          savePartialSession(unsaved);
+        if (totalElapsed >= 0.1) {
+          saveOrUpdateSession(totalElapsed);
         }
       }
       setEndTime(null);
       setSessionStartTime(null);
-      setSavedMinutes(0);
+      setActiveSessionId(null);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -120,51 +119,60 @@ const FocusTimer = () => {
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
 
-  // Save a partial session (supports fractional minutes)
-  const savePartialSession = useCallback((mins: number) => {
-    if (mins <= 0) return;
-    const rounded = Math.round(mins * 10) / 10; // round to 0.1
-    const session: StudySession = {
-      id: Date.now().toString(),
-      date: new Date().toISOString().split('T')[0],
-      duration: rounded,
-      subject: subject || 'General',
-    };
-    setSessions((prev) => [session, ...prev]);
+  // Save or update the current session (single session per timer run)
+  const saveOrUpdateSession = useCallback((totalMins: number) => {
+    if (totalMins <= 0) return;
+    const rounded = Math.round(totalMins * 10) / 10;
+    const today = new Date().toISOString().split('T')[0];
+
+    if (activeSessionId) {
+      // Update existing session
+      setSessions((prev) => prev.map((s) =>
+        s.id === activeSessionId ? { ...s, duration: rounded } : s
+      ));
+    } else {
+      // Create new session
+      const id = Date.now().toString();
+      const session: StudySession = {
+        id,
+        date: today,
+        duration: rounded,
+        subject: subject || 'General',
+      };
+      setSessions((prev) => [session, ...prev]);
+      setActiveSessionId(id);
+    }
+
     if (selectedTaskId) {
       setTaskMinutes((prev) => ({
         ...prev,
-        [selectedTaskId]: (prev[selectedTaskId] || 0) + rounded,
+        [selectedTaskId]: rounded, // total for this timer run
       }));
     }
-  }, [subject, setSessions, selectedTaskId, setTaskMinutes]);
+  }, [subject, setSessions, selectedTaskId, setTaskMinutes, activeSessionId, setActiveSessionId]);
 
-  // Periodic save while running (realtime counting)
+  // Periodic save while running (realtime counting) — updates the SAME session
   useEffect(() => {
     if (isRunning && !isBreak && sessionStartTime) {
       saveIntervalRef.current = setInterval(() => {
-        const totalElapsedMs = Date.now() - sessionStartTime;
-        const totalElapsedMins = totalElapsedMs / 60000;
-        const unsaved = totalElapsedMins - savedMinutes;
-        if (unsaved >= 0.5) { // save every 0.5 min (30s) of unsaved time
-          savePartialSession(unsaved);
-          setSavedMinutes(totalElapsedMins);
+        const totalElapsedMins = (Date.now() - sessionStartTime) / 60000;
+        if (totalElapsedMins >= 0.1) {
+          saveOrUpdateSession(totalElapsedMins);
         }
       }, SAVE_INTERVAL_MS);
     }
     return () => clearInterval(saveIntervalRef.current);
-  }, [isRunning, isBreak, sessionStartTime, savedMinutes, savePartialSession, setSavedMinutes]);
+  }, [isRunning, isBreak, sessionStartTime, saveOrUpdateSession]);
 
   const finishSession = useCallback(() => {
     if (!isBreak && sessionStartTime) {
       const totalElapsed = (Date.now() - sessionStartTime) / 60000;
-      const unsaved = Math.max(0, totalElapsed - savedMinutes);
-      if (unsaved > 0) {
-        savePartialSession(unsaved);
+      if (totalElapsed > 0) {
+        saveOrUpdateSession(totalElapsed);
       }
     }
     setSessionStartTime(null);
-    setSavedMinutes(0);
+    setActiveSessionId(null);
 
     const nextIsBreak = !isBreak;
     setIsBreak(nextIsBreak);
@@ -173,7 +181,7 @@ const FocusTimer = () => {
     setIsRunning(false);
     setEndTime(null);
     setTimerMode(nextIsBreak ? 'break' : 'focus');
-  }, [isBreak, sessionStartTime, savedMinutes, savePartialSession, breakDuration, focusDuration, setEndTime, setTimerMode, setSessionStartTime, setSavedMinutes]);
+  }, [isBreak, sessionStartTime, saveOrUpdateSession, breakDuration, focusDuration, setEndTime, setTimerMode, setSessionStartTime, setActiveSessionId]);
 
   useEffect(() => {
     if (isRunning) {
@@ -201,7 +209,7 @@ const FocusTimer = () => {
     setIsRunning(true);
     if (!isBreak && !sessionStartTime) {
       setSessionStartTime(Date.now());
-      setSavedMinutes(0);
+      setActiveSessionId(null); // will be created on first save
     }
   };
 
@@ -213,24 +221,21 @@ const FocusTimer = () => {
     }
     setEndTime(null);
     clearInterval(intervalRef.current);
-    // Save any unsaved minutes on pause
+    // Save progress on pause
     if (!isBreak && sessionStartTime) {
       const totalElapsed = (Date.now() - sessionStartTime) / 60000;
-      const unsaved = totalElapsed - savedMinutes;
-      if (unsaved >= 0.1) {
-        savePartialSession(unsaved);
-        setSavedMinutes(totalElapsed);
+      if (totalElapsed >= 0.1) {
+        saveOrUpdateSession(totalElapsed);
       }
     }
   };
 
   const reset = () => {
-    // Save any unsaved progress before resetting
+    // Save any progress before resetting
     if (isRunning && !isBreak && sessionStartTime) {
       const totalElapsed = (Date.now() - sessionStartTime) / 60000;
-      const unsaved = totalElapsed - savedMinutes;
-      if (unsaved >= 0.1) {
-        savePartialSession(unsaved);
+      if (totalElapsed >= 0.1) {
+        saveOrUpdateSession(totalElapsed);
       }
     }
     setIsRunning(false);
@@ -238,7 +243,7 @@ const FocusTimer = () => {
     setTimeLeft(focusDuration * 60);
     setEndTime(null);
     setSessionStartTime(null);
-    setSavedMinutes(0);
+    setActiveSessionId(null);
     clearInterval(intervalRef.current);
   };
 
