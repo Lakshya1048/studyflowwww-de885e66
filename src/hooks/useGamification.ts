@@ -1,9 +1,8 @@
-import { useMemo, useEffect, useRef } from 'react';
+import { useMemo, useEffect, useRef, useCallback } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 import type { StudySession, StudyTask } from '@/lib/types';
 import confetti from 'canvas-confetti';
 
-// Level thresholds (XP needed to reach each level)
 const LEVEL_THRESHOLDS = [
   0, 50, 150, 300, 500, 800, 1200, 1700, 2400, 3200, 4200, 5500, 7000, 9000, 12000
 ];
@@ -39,9 +38,13 @@ export function useGamification() {
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
   const [unlockedBadges, setUnlockedBadges] = useLocalStorage<Record<string, string>>('studyflow-badges', {});
   const [newBadge, setNewBadge] = useLocalStorage<Achievement | null>('studyflow-new-badge', null);
-  const prevBadgeCountRef = useRef(Object.keys(unlockedBadges).length);
+  
+  // Use refs to track previous values and avoid re-render loops
+  const badgesRef = useRef(unlockedBadges);
+  badgesRef.current = unlockedBadges;
 
-  // Calculate streak
+  const sessionCount = sessions.length;
+  
   const streak = useMemo(() => {
     const dates = [...new Set(sessions.map(s => s.date))].sort().reverse();
     let currentStreak = 0;
@@ -61,8 +64,6 @@ export function useGamification() {
 
   const totalMinutes = useMemo(() => sessions.reduce((a, s) => a + s.duration, 0), [sessions]);
   const completedTasks = useMemo(() => tasks.filter(t => t.completed).length, [tasks]);
-
-  // XP: 1 XP per minute studied + 50 XP per completed task
   const totalXP = useMemo(() => Math.round(totalMinutes) + completedTasks * 50, [totalMinutes, completedTasks]);
 
   const level = useMemo(() => {
@@ -79,16 +80,23 @@ export function useGamification() {
   const xpNeeded = nextLevelXP - currentLevelXP;
   const progressPercent = Math.min(100, (xpInLevel / xpNeeded) * 100);
 
-  // Check badges
+  // Check badges - use a fingerprint to avoid running on every render
+  const fingerprint = `${sessionCount}-${streak}-${completedTasks}-${Math.floor(totalMinutes)}-${level}`;
+  const lastFingerprint = useRef('');
+
   useEffect(() => {
+    if (fingerprint === lastFingerprint.current) return;
+    lastFingerprint.current = fingerprint;
+
+    const currentBadges = badgesRef.current;
     const checks: Record<string, boolean> = {
-      'first-session': sessions.length >= 1,
+      'first-session': sessionCount >= 1,
       'streak-3': streak >= 3,
       'streak-7': streak >= 7,
       'streak-14': streak >= 14,
-      'sessions-10': sessions.length >= 10,
-      'sessions-50': sessions.length >= 50,
-      'sessions-100': sessions.length >= 100,
+      'sessions-10': sessionCount >= 10,
+      'sessions-50': sessionCount >= 50,
+      'sessions-100': sessionCount >= 100,
       'tasks-5': completedTasks >= 5,
       'tasks-25': completedTasks >= 25,
       'tasks-50': completedTasks >= 50,
@@ -100,7 +108,7 @@ export function useGamification() {
     };
 
     let updated = false;
-    const newUnlocked = { ...unlockedBadges };
+    const newUnlocked = { ...currentBadges };
     let latestBadge: Achievement | null = null;
 
     for (const [id, earned] of Object.entries(checks)) {
@@ -116,7 +124,6 @@ export function useGamification() {
       setUnlockedBadges(newUnlocked);
       if (latestBadge) {
         setNewBadge(latestBadge);
-        // Fire confetti!
         confetti({
           particleCount: 80,
           spread: 70,
@@ -125,14 +132,17 @@ export function useGamification() {
         });
       }
     }
-  }, [sessions.length, streak, completedTasks, totalMinutes, level]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fingerprint]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const achievements: Achievement[] = BADGE_DEFINITIONS.map(b => ({
-    ...b,
-    unlockedAt: unlockedBadges[b.id],
-  }));
+  const achievements: Achievement[] = useMemo(() => 
+    BADGE_DEFINITIONS.map(b => ({
+      ...b,
+      unlockedAt: unlockedBadges[b.id],
+    })),
+    [unlockedBadges]
+  );
 
-  const dismissNewBadge = () => setNewBadge(null);
+  const dismissNewBadge = useCallback(() => setNewBadge(null), [setNewBadge]);
 
   return {
     totalXP,
