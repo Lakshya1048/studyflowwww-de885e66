@@ -1,9 +1,40 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, RotateCcw, Settings, Maximize2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { StudySession, StudyTask } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+
+// Extracted outside to prevent remounting on parent re-renders
+const TimerRing = memo(({ size = 208, progress, minutes, seconds, isBreak }: {
+  size?: number; progress: number; minutes: number; seconds: number; isBreak: boolean;
+}) => {
+  const r = 90;
+  const c = 2 * Math.PI * r;
+  const offset = c - (progress / 100) * c;
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r={r} fill="none" stroke="hsl(var(--timer-ring-inactive))" strokeWidth="6" />
+        <circle
+          cx="100" cy="100" r={r} fill="none"
+          stroke="hsl(var(--timer-ring))" strokeWidth="6" strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={offset}
+          style={{ transition: 'stroke-dashoffset 0.5s ease' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="font-display font-bold text-foreground tabular-nums" style={{ fontSize: size > 300 ? '5rem' : '2.5rem' }}>
+          {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+        </span>
+        <span className="text-muted-foreground mt-1" style={{ fontSize: size > 300 ? '1.1rem' : '0.75rem' }}>
+          {isBreak ? 'break' : 'focus'}
+        </span>
+      </div>
+    </div>
+  );
+});
 
 const PRESET_TIMES = [15, 25, 30, 45, 60];
 const SAVE_INTERVAL_MS = 30_000; // save progress every 30 seconds
@@ -227,34 +258,7 @@ const FocusTimer = () => {
   const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : null;
   const spentOnTask = selectedTaskId ? (taskMinutes[selectedTaskId] || 0) : 0;
 
-  // Timer ring component
-  const TimerRing = ({ size = 208 }: { size?: number }) => {
-    const r = 90;
-    const c = 2 * Math.PI * r;
-    const offset = c - (progress / 100) * c;
-    return (
-      <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
-          <circle cx="100" cy="100" r={r} fill="none" stroke="hsl(var(--timer-ring-inactive))" strokeWidth="6" />
-          <motion.circle
-            cx="100" cy="100" r={r} fill="none"
-            stroke="hsl(var(--timer-ring))" strokeWidth="6" strokeLinecap="round"
-            strokeDasharray={c}
-            animate={{ strokeDashoffset: offset }}
-            transition={{ duration: 0.5 }}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="font-display font-bold text-foreground tabular-nums" style={{ fontSize: size > 300 ? '5rem' : '2.5rem' }}>
-            {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-          </span>
-          <span className="text-muted-foreground mt-1" style={{ fontSize: size > 300 ? '1.1rem' : '0.75rem' }}>
-            {isBreak ? 'break' : 'focus'}
-          </span>
-        </div>
-      </div>
-    );
-  };
+  // TimerRing is now a top-level memo component
 
   // Fullscreen overlay — rendered inline, NOT inside AnimatePresence to prevent re-mount flicker
   if (isFullscreen) {
@@ -275,7 +279,7 @@ const FocusTimer = () => {
           <p className="text-lg text-foreground font-medium">{selectedTask.title}</p>
         )}
 
-        <TimerRing size={400} />
+        <TimerRing size={400} progress={progress} minutes={minutes} seconds={seconds} isBreak={isBreak} />
 
         <div className="flex gap-4">
           <Button size="lg" onClick={() => (isRunning ? pauseTimer() : startTimer())} className="gap-2 px-10 py-4 text-lg">
@@ -473,7 +477,7 @@ const FocusTimer = () => {
 
       {/* Timer ring */}
       <div className="flex justify-center">
-        <TimerRing size={208} />
+        <TimerRing size={208} progress={progress} minutes={minutes} seconds={seconds} isBreak={isBreak} />
       </div>
 
       {selectedTask && spentOnTask > 0 && !showSettings && (
