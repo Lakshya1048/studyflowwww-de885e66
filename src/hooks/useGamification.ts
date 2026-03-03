@@ -3,9 +3,36 @@ import { useLocalStorage } from './useLocalStorage';
 import type { StudySession, StudyTask } from '@/lib/types';
 import confetti from 'canvas-confetti';
 
-const LEVEL_THRESHOLDS = [
-  0, 50, 150, 300, 500, 800, 1200, 1700, 2400, 3200, 4200, 5500, 7000, 9000, 12000
+export interface RankInfo {
+  name: string;
+  icon: string;
+  minStreak: number;
+}
+
+export const RANKS: RankInfo[] = [
+  { name: 'Rookie', icon: '🌱', minStreak: 0 },
+  { name: 'Bronze', icon: '🥉', minStreak: 3 },
+  { name: 'Silver', icon: '🥈', minStreak: 7 },
+  { name: 'Gold', icon: '🥇', minStreak: 14 },
+  { name: 'Platinum', icon: '💎', minStreak: 21 },
+  { name: 'Diamond', icon: '👑', minStreak: 30 },
+  { name: 'Legend', icon: '🔥', minStreak: 60 },
 ];
+
+export function getRank(streak: number): RankInfo {
+  let rank = RANKS[0];
+  for (const r of RANKS) {
+    if (streak >= r.minStreak) rank = r;
+  }
+  return rank;
+}
+
+export function getNextRank(streak: number): RankInfo | null {
+  for (const r of RANKS) {
+    if (streak < r.minStreak) return r;
+  }
+  return null;
+}
 
 export interface Achievement {
   id: string;
@@ -29,8 +56,8 @@ const BADGE_DEFINITIONS: Omit<Achievement, 'unlockedAt'>[] = [
   { id: 'hours-1', title: 'First Hour', description: 'Study for 1 hour total', icon: '⏰' },
   { id: 'hours-10', title: 'Dedicated', description: '10 hours of total study', icon: '📖' },
   { id: 'hours-50', title: 'Scholar', description: '50 hours of total study', icon: '🎓' },
-  { id: 'level-5', title: 'Rising Star', description: 'Reach level 5', icon: '⭐' },
-  { id: 'level-10', title: 'Elite', description: 'Reach level 10', icon: '👑' },
+  { id: 'rank-silver', title: 'Rising Star', description: 'Reach Silver rank', icon: '⭐' },
+  { id: 'rank-diamond', title: 'Elite', description: 'Reach Diamond rank', icon: '👑' },
 ];
 
 export function useGamification() {
@@ -38,13 +65,13 @@ export function useGamification() {
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
   const [unlockedBadges, setUnlockedBadges] = useLocalStorage<Record<string, string>>('studyflow-badges', {});
   const [newBadge, setNewBadge] = useLocalStorage<Achievement | null>('studyflow-new-badge', null);
-  
-  // Use refs to track previous values and avoid re-render loops
+  const [lastRankName, setLastRankName] = useLocalStorage<string>('studyflow-last-rank', 'Rookie');
+
   const badgesRef = useRef(unlockedBadges);
   badgesRef.current = unlockedBadges;
 
   const sessionCount = sessions.length;
-  
+
   const streak = useMemo(() => {
     const dates = [...new Set(sessions.map(s => s.date))].sort().reverse();
     let currentStreak = 0;
@@ -64,24 +91,30 @@ export function useGamification() {
 
   const totalMinutes = useMemo(() => sessions.reduce((a, s) => a + s.duration, 0), [sessions]);
   const completedTasks = useMemo(() => tasks.filter(t => t.completed).length, [tasks]);
-  const totalXP = useMemo(() => Math.round(totalMinutes) + completedTasks * 50, [totalMinutes, completedTasks]);
 
-  const level = useMemo(() => {
-    let lvl = 0;
-    for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
-      if (totalXP >= LEVEL_THRESHOLDS[i]) { lvl = i + 1; break; }
+  const rank = getRank(streak);
+  const nextRank = getNextRank(streak);
+  const progressPercent = nextRank
+    ? ((streak - rank.minStreak) / (nextRank.minStreak - rank.minStreak)) * 100
+    : 100;
+
+  // Celebrate rank-ups
+  useEffect(() => {
+    if (rank.name !== lastRankName && rank.name !== 'Rookie') {
+      setLastRankName(rank.name);
+      confetti({
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.5 },
+        colors: ['#10b981', '#f59e0b', '#6366f1', '#ec4899'],
+      });
+    } else if (rank.name !== lastRankName) {
+      setLastRankName(rank.name);
     }
-    return lvl;
-  }, [totalXP]);
+  }, [rank.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const currentLevelXP = LEVEL_THRESHOLDS[level - 1] || 0;
-  const nextLevelXP = LEVEL_THRESHOLDS[level] || LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1] + 2000;
-  const xpInLevel = totalXP - currentLevelXP;
-  const xpNeeded = nextLevelXP - currentLevelXP;
-  const progressPercent = Math.min(100, (xpInLevel / xpNeeded) * 100);
-
-  // Check badges - use a fingerprint to avoid running on every render
-  const fingerprint = `${sessionCount}-${streak}-${completedTasks}-${Math.floor(totalMinutes)}-${level}`;
+  // Badge checks
+  const fingerprint = `${sessionCount}-${streak}-${completedTasks}-${Math.floor(totalMinutes)}`;
   const lastFingerprint = useRef('');
 
   useEffect(() => {
@@ -103,8 +136,8 @@ export function useGamification() {
       'hours-1': totalMinutes >= 60,
       'hours-10': totalMinutes >= 600,
       'hours-50': totalMinutes >= 3000,
-      'level-5': level >= 5,
-      'level-10': level >= 10,
+      'rank-silver': streak >= 7,
+      'rank-diamond': streak >= 30,
     };
 
     let updated = false;
@@ -134,7 +167,7 @@ export function useGamification() {
     }
   }, [fingerprint]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const achievements: Achievement[] = useMemo(() => 
+  const achievements: Achievement[] = useMemo(() =>
     BADGE_DEFINITIONS.map(b => ({
       ...b,
       unlockedAt: unlockedBadges[b.id],
@@ -145,12 +178,10 @@ export function useGamification() {
   const dismissNewBadge = useCallback(() => setNewBadge(null), [setNewBadge]);
 
   return {
-    totalXP,
-    level,
-    progressPercent,
-    xpInLevel,
-    xpNeeded,
+    rank,
+    nextRank,
     streak,
+    progressPercent,
     achievements,
     newBadge,
     dismissNewBadge,

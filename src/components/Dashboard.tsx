@@ -4,6 +4,7 @@ import { CheckSquare, Timer, TrendingUp, ArrowRight, FileText, Bell, X } from 'l
 import type { TabId, StudyTask, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { Profile } from '@/hooks/useProfile';
+import type { RankInfo, Achievement } from '@/hooks/useGamification';
 import GamificationCard from '@/components/GamificationCard';
 import AchievementsGrid from '@/components/AchievementsGrid';
 
@@ -11,13 +12,11 @@ interface DashboardProps {
   onNavigate: (tab: TabId) => void;
   profile: Profile;
   gamification: {
-    level: number;
-    totalXP: number;
-    progressPercent: number;
-    xpInLevel: number;
-    xpNeeded: number;
+    rank: RankInfo;
+    nextRank: RankInfo | null;
     streak: number;
-    achievements: { id: string; title: string; description: string; icon: string; unlockedAt?: string }[];
+    progressPercent: number;
+    achievements: Achievement[];
   };
 }
 
@@ -95,8 +94,8 @@ const Dashboard = ({ onNavigate, profile, gamification }: DashboardProps) => {
         </div>
       </motion.div>
 
-      {/* Gamification */}
-      <GamificationCard {...gamification} />
+      {/* Rank Card */}
+      <GamificationCard rank={gamification.rank} nextRank={gamification.nextRank} streak={gamification.streak} progressPercent={gamification.progressPercent} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {quickCards.map((card, i) => (
@@ -120,10 +119,8 @@ const Dashboard = ({ onNavigate, profile, gamification }: DashboardProps) => {
         ))}
       </div>
 
-      {/* Achievements */}
       <AchievementsGrid achievements={gamification.achievements} />
 
-      {/* Today's pending tasks */}
       {pendingTasks.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="p-4 rounded-xl bg-card border border-border card-shadow">
           <div className="flex items-center justify-between mb-3">
