@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { CheckSquare, Timer, BarChart3, LayoutDashboard, Moon, Sun, MessageCircleQuestion, FileText, Settings, User } from 'lucide-react';
 import type { TabId, StreakData } from '@/lib/types';
 import type { Profile } from '@/hooks/useProfile';
+import type { RankInfo } from '@/hooks/useGamification';
 import GamificationCard from '@/components/GamificationCard';
 
 interface SidebarProps {
@@ -12,12 +13,10 @@ interface SidebarProps {
   onOpenSettings: () => void;
   profile: Profile;
   gamification: {
-    level: number;
-    totalXP: number;
-    progressPercent: number;
-    xpInLevel: number;
-    xpNeeded: number;
+    rank: RankInfo;
+    nextRank: RankInfo | null;
     streak: number;
+    progressPercent: number;
   };
 }
 
@@ -55,10 +54,10 @@ const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile, gami
         )}
       </div>
 
-      {/* Gamification card */}
+      {/* Rank card */}
       {!collapsed && (
         <div className="mt-3">
-          <GamificationCard compact {...gamification} />
+          <GamificationCard compact rank={gamification.rank} nextRank={gamification.nextRank} streak={gamification.streak} progressPercent={gamification.progressPercent} />
         </div>
       )}
 

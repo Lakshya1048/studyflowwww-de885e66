@@ -1,16 +1,19 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Clock, CheckCircle2, Target } from 'lucide-react';
+import { TrendingUp, Clock, CheckCircle2, Target, Flame } from 'lucide-react';
 import type { StudySession, StudyTask } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import AchievementsGrid from '@/components/AchievementsGrid';
-import type { Achievement } from '@/hooks/useGamification';
+import type { Achievement, RankInfo } from '@/hooks/useGamification';
+import { RANKS } from '@/hooks/useGamification';
 
 interface ProgressTrackerProps {
   achievements: Achievement[];
+  rank: RankInfo;
+  streak: number;
 }
 
-const ProgressTracker = ({ achievements }: ProgressTrackerProps) => {
+const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) => {
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
 
@@ -25,7 +28,6 @@ const ProgressTracker = ({ achievements }: ProgressTrackerProps) => {
     const weekMinutes = weekSessions.reduce((a, s) => a + s.duration, 0);
     const completedTasks = tasks.filter((t) => t.completed).length;
 
-    // Subject breakdown this week
     const subjectMap: Record<string, number> = {};
     weekSessions.forEach((s) => {
       subjectMap[s.subject] = (subjectMap[s.subject] || 0) + s.duration;
@@ -34,7 +36,6 @@ const ProgressTracker = ({ achievements }: ProgressTrackerProps) => {
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5);
 
-    // Daily data for the week bar chart
     const days: { label: string; minutes: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(Date.now() - i * 86400000);
@@ -58,6 +59,37 @@ const ProgressTracker = ({ achievements }: ProgressTrackerProps) => {
   return (
     <div className="space-y-6">
       <h2 className="font-display text-xl font-bold text-foreground">Progress</h2>
+
+      {/* Current Rank */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="p-4 rounded-xl bg-card border border-border card-shadow"
+      >
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-3xl">{rank.icon}</span>
+          <div>
+            <p className="text-lg font-bold text-foreground">{rank.name}</p>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Flame className="w-3 h-3 text-streak" />
+              <span>{streak} day streak</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-1.5">
+          {RANKS.map((r) => (
+            <div
+              key={r.name}
+              className={`flex-1 h-2 rounded-full ${streak >= r.minStreak ? 'gradient-primary' : 'bg-muted'}`}
+              title={`${r.name} (${r.minStreak}+ days)`}
+            />
+          ))}
+        </div>
+        <div className="flex justify-between mt-1">
+          <span className="text-[10px] text-muted-foreground">🌱</span>
+          <span className="text-[10px] text-muted-foreground">🔥</span>
+        </div>
+      </motion.div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3">
