@@ -157,7 +157,13 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
 
       {/* Achievements */}
       <div className="p-4 rounded-lg bg-card border border-border card-shadow">
-        <AchievementsGrid achievements={achievements} />
+        <AchievementsGrid
+          achievements={achievements}
+          streak={streak}
+          sessionCount={sessions.length}
+          completedTasks={stats.completedTasks}
+          totalMinutes={stats.totalMinutes}
+        />
       </div>
     </div>
   );
