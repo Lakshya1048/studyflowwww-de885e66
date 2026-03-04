@@ -4,7 +4,7 @@ import { Plus, Check, AlertCircle, Trash2, ChevronLeft, ChevronRight, RotateCcw,
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import type { StudyTask, StudySession } from '@/lib/types';
+import type { StudyTask } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface RevisionItem {
