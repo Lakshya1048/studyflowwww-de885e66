@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -10,9 +10,12 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
     }
   });
 
-  // Sync across components using the same key
+  // Track whether this instance triggered the update to avoid self-notification
+  const isLocalUpdate = useRef(false);
+
   useEffect(() => {
     const handler = (e: Event) => {
+      if (isLocalUpdate.current) return;
       const detail = (e as CustomEvent).detail;
       if (detail?.key === key) {
         setStoredValue(detail.value);
@@ -27,8 +30,9 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
       const nextValue = value instanceof Function ? value(prev) : value;
       try {
         window.localStorage.setItem(key, JSON.stringify(nextValue));
-        // Notify other hooks using the same key
+        isLocalUpdate.current = true;
         window.dispatchEvent(new CustomEvent('localstorage-sync', { detail: { key, value: nextValue } }));
+        isLocalUpdate.current = false;
       } catch {
         // ignore
       }
