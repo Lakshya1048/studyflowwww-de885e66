@@ -63,6 +63,7 @@ const BADGE_DEFINITIONS: Omit<Achievement, 'unlockedAt'>[] = [
 export function useGamification() {
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
+  const [activeDays] = useLocalStorage<string[]>('studyflow-active-days', []);
   const [unlockedBadges, setUnlockedBadges] = useLocalStorage<Record<string, string>>('studyflow-badges', {});
   const [newBadge, setNewBadge] = useLocalStorage<Achievement | null>('studyflow-new-badge', null);
   const [lastRankName, setLastRankName] = useLocalStorage<string>('studyflow-last-rank', 'Rookie');
@@ -73,21 +74,23 @@ export function useGamification() {
   const sessionCount = sessions.length;
 
   const streak = useMemo(() => {
-    const dates = [...new Set(sessions.map(s => s.date))].sort().reverse();
+    // Merge session dates and task-completion active days
+    const sessionDates = sessions.map(s => s.date);
+    const allDates = [...new Set([...sessionDates, ...activeDays])].sort().reverse();
     let currentStreak = 0;
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
-    const studiedToday = dates.includes(todayStr);
-    const startOffset = studiedToday ? 0 : 1;
+    const activeToday = allDates.includes(todayStr);
+    const startOffset = activeToday ? 0 : 1;
     for (let i = startOffset; ; i++) {
       const checkDate = new Date(today);
       checkDate.setDate(checkDate.getDate() - i);
       const checkStr = checkDate.toISOString().split('T')[0];
-      if (dates.includes(checkStr)) currentStreak++;
+      if (allDates.includes(checkStr)) currentStreak++;
       else break;
     }
     return currentStreak;
-  }, [sessions]);
+  }, [sessions, activeDays]);
 
   const totalMinutes = useMemo(() => sessions.reduce((a, s) => a + s.duration, 0), [sessions]);
   const completedTasks = useMemo(() => tasks.filter(t => t.completed).length, [tasks]);
