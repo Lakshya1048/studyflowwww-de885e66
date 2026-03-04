@@ -44,7 +44,6 @@ const getSubjectStyle = (subject: string) =>
 
 const TaskManager = () => {
   const [tasks, setTasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
-  const [sessions, setSessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [revisions, setRevisions] = useLocalStorage<RevisionItem[]>('studyflow-revisions', []);
   const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState('');
