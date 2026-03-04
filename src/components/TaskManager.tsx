@@ -4,7 +4,7 @@ import { Plus, Check, AlertCircle, Trash2, ChevronLeft, ChevronRight, RotateCcw,
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import type { StudyTask } from '@/lib/types';
+import type { StudyTask, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface RevisionItem {
@@ -44,6 +44,7 @@ const getSubjectStyle = (subject: string) =>
 
 const TaskManager = () => {
   const [tasks, setTasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
+  const [sessions, setSessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [revisions, setRevisions] = useLocalStorage<RevisionItem[]>('studyflow-revisions', []);
   const [showAdd, setShowAdd] = useState(false);
   const [title, setTitle] = useState('');
@@ -102,8 +103,29 @@ const TaskManager = () => {
   };
 
   const toggleTask = useCallback((id: string) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
-  }, [setTasks]);
+    setTasks((prev) => {
+      const task = prev.find((t) => t.id === id);
+      // If marking as completed, create a 1-min session to count toward streak
+      if (task && !task.completed) {
+        const today = getLocalDateStr();
+        const alreadyHasTaskSession = sessions.some(
+          (s) => s.id === `task-${id}`
+        );
+        if (!alreadyHasTaskSession) {
+          setSessions((prevSessions) => [
+            {
+              id: `task-${id}`,
+              date: today,
+              duration: 1,
+              subject: task.subject || 'General',
+            },
+            ...prevSessions,
+          ]);
+        }
+      }
+      return prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t));
+    });
+  }, [setTasks, sessions, setSessions]);
 
   const deleteTask = useCallback((id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
