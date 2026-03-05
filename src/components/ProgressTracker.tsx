@@ -19,8 +19,8 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
 
   const stats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    const today = getLocalDateStr();
+    const weekAgo = getLocalDateStr(new Date(Date.now() - 7 * 86400000));
 
     const todaySessions = sessions.filter((s) => s.date === today);
     const weekSessions = sessions.filter((s) => s.date >= weekAgo);
