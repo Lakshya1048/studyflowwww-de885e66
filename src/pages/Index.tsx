@@ -1,7 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { AnimatePresence } from 'framer-motion';
 import Sidebar from '@/components/Sidebar';
-import SplashScreen from '@/components/SplashScreen';
 import Dashboard from '@/components/Dashboard';
 import TaskManager from '@/components/TaskManager';
 import FocusTimer from '@/components/FocusTimer';
@@ -28,7 +26,6 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
   const [onboardingDone, setOnboardingDone] = useLocalStorage<boolean>('studyflow-onboarding-done', false);
 
   useStudyNotifications(profile?.display_name);
@@ -90,14 +87,6 @@ const Index = () => {
   // Show onboarding for first-time users
   if (!onboardingDone) {
     return <OnboardingScreen onComplete={() => setOnboardingDone(true)} />;
-  }
-
-  if (showSplash) {
-    return (
-      <AnimatePresence>
-        <SplashScreen onFinish={() => setShowSplash(false)} streak={gamification.streak} />
-      </AnimatePresence>
-    );
   }
 
   return (
