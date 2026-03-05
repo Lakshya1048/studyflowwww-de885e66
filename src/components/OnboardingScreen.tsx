@@ -18,15 +18,15 @@ const steps = [
   {
     icon: Timer,
     emoji: '🎯',
-    title: 'Focus mode',
-    description: 'Use the Pomodoro timer to stay focused. Track time per task and earn XP for every minute.',
+    title: 'Focus & Rank Up',
+    description: 'Use the Pomodoro timer to stay focused. Build daily streaks to climb ranks — from Rookie 🌱 all the way to Legend 🔥.',
     gradient: 'gradient-accent',
   },
   {
     icon: TrendingUp,
     emoji: '📊',
     title: 'Track progress',
-    description: 'See your streaks, level up, unlock badges, and watch your study hours grow over time.',
+    description: 'See your streaks, rank up, unlock achievement badges, and watch your study hours grow over time.',
     gradient: 'gradient-primary',
   },
 ];
