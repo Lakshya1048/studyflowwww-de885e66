@@ -92,6 +92,14 @@ const Index = () => {
     return <OnboardingScreen onComplete={() => setOnboardingDone(true)} />;
   }
 
+  if (showSplash) {
+    return (
+      <AnimatePresence>
+        <SplashScreen onFinish={() => setShowSplash(false)} streak={gamification.streak} />
+      </AnimatePresence>
+    );
+  }
+
   return (
     <>
       <OfflineIndicator />
