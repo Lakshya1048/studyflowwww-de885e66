@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 import type { StudySession, StudyTask } from '@/lib/types';
+import { getLocalDateStr } from '@/lib/utils';
 
 const IDLE_REMINDER_MINUTES = 60;
 const EVENING_HOUR = 21; // 9 PM
