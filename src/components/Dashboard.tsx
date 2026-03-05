@@ -120,7 +120,13 @@ const Dashboard = ({ onNavigate, profile, gamification }: DashboardProps) => {
         ))}
       </div>
 
-      <AchievementsGrid achievements={gamification.achievements} />
+      <AchievementsGrid
+        achievements={gamification.achievements}
+        streak={gamification.streak}
+        sessionCount={sessions.length}
+        completedTasks={tasks.filter(t => t.completed).length}
+        totalMinutes={sessions.reduce((a, s) => a + s.duration, 0)}
+      />
 
       {pendingTasks.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="p-4 rounded-xl bg-card border border-border card-shadow">
