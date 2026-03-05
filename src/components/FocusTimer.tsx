@@ -74,7 +74,7 @@ const FocusTimer = () => {
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
   const saveIntervalRef = useRef<ReturnType<typeof setInterval>>();
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateStr();
 
   const todayPending = tasks.filter((t) => !t.completed && t.dueDate === today);
   const overduePending = tasks.filter((t) => !t.completed && t.dueDate < today);
