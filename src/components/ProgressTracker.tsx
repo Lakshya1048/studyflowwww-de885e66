@@ -40,7 +40,7 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
     const days: { label: string; minutes: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(Date.now() - i * 86400000);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getLocalDateStr(d);
       const dayLabel = d.toLocaleDateString('en', { weekday: 'short' });
       const mins = sessions.filter((s) => s.date === dateStr).reduce((a, s) => a + s.duration, 0);
       days.push({ label: dayLabel, minutes: mins });

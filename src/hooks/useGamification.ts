@@ -80,13 +80,13 @@ export function useGamification() {
     const allDates = [...new Set([...sessionDates, ...activeDays])].sort().reverse();
     let currentStreak = 0;
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = getLocalDateStr(today);
     const activeToday = allDates.includes(todayStr);
     const startOffset = activeToday ? 0 : 1;
     for (let i = startOffset; ; i++) {
       const checkDate = new Date(today);
       checkDate.setDate(checkDate.getDate() - i);
-      const checkStr = checkDate.toISOString().split('T')[0];
+      const checkStr = getLocalDateStr(checkDate);
       if (allDates.includes(checkStr)) currentStreak++;
       else break;
     }

@@ -22,7 +22,7 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ onNavigate, profile, gamification }: DashboardProps) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateStr();
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [notifOpen, setNotifOpen] = useState(false);

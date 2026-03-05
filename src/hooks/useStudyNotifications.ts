@@ -70,7 +70,7 @@ export function useStudyNotifications(displayName?: string | null) {
   useEffect(() => { requestPermission(); }, []);
 
   const getRevisionSummary = useCallback(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateStr();
     const todaySessions = sessions.filter((s) => s.date === today);
     const todayCompleted = tasks.filter((t) => t.completed && t.dueDate === today);
     const subjects = [...new Set([

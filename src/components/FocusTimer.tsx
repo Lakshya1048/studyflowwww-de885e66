@@ -4,6 +4,7 @@ import { Play, Pause, RotateCcw, Settings, Maximize2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { StudySession, StudyTask } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { getLocalDateStr } from '@/lib/utils';
 
 // Extracted outside to prevent remounting on parent re-renders
 const TimerRing = memo(({ size = 208, progress, minutes, seconds, isBreak }: {
