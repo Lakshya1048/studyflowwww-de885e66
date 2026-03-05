@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useRef, useCallback } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 import type { StudySession, StudyTask } from '@/lib/types';
+import { getLocalDateStr } from '@/lib/utils';
 import confetti from 'canvas-confetti';
 
 export interface RankInfo {
