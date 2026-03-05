@@ -4,6 +4,7 @@ import { Play, Pause, RotateCcw, Settings, Maximize2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { StudySession, StudyTask } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { getLocalDateStr } from '@/lib/utils';
 
 // Extracted outside to prevent remounting on parent re-renders
 const TimerRing = memo(({ size = 208, progress, minutes, seconds, isBreak }: {
@@ -74,7 +75,7 @@ const FocusTimer = () => {
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
   const saveIntervalRef = useRef<ReturnType<typeof setInterval>>();
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateStr();
 
   const todayPending = tasks.filter((t) => !t.completed && t.dueDate === today);
   const overduePending = tasks.filter((t) => !t.completed && t.dueDate < today);
@@ -123,7 +124,7 @@ const FocusTimer = () => {
   const saveOrUpdateSession = useCallback((totalMins: number) => {
     if (totalMins <= 0) return;
     const rounded = Math.round(totalMins * 10) / 10;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateStr();
 
     if (activeSessionId) {
       // Update existing session

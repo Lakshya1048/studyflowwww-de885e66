@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Clock, CheckCircle2, Target, Flame } from 'lucide-react';
 import type { StudySession, StudyTask } from '@/lib/types';
+import { getLocalDateStr } from '@/lib/utils';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import AchievementsGrid from '@/components/AchievementsGrid';
 import type { Achievement, RankInfo } from '@/hooks/useGamification';
@@ -18,8 +19,8 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
 
   const stats = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
+    const today = getLocalDateStr();
+    const weekAgo = getLocalDateStr(new Date(Date.now() - 7 * 86400000));
 
     const todaySessions = sessions.filter((s) => s.date === today);
     const weekSessions = sessions.filter((s) => s.date >= weekAgo);
@@ -39,7 +40,7 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
     const days: { label: string; minutes: number }[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date(Date.now() - i * 86400000);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = getLocalDateStr(d);
       const dayLabel = d.toLocaleDateString('en', { weekday: 'short' });
       const mins = sessions.filter((s) => s.date === dateStr).reduce((a, s) => a + s.duration, 0);
       days.push({ label: dayLabel, minutes: mins });

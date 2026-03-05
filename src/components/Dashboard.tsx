@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckSquare, Timer, TrendingUp, ArrowRight, FileText, Bell, X } from 'lucide-react';
 import type { TabId, StudyTask, StudySession } from '@/lib/types';
+import { getLocalDateStr } from '@/lib/utils';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { Profile } from '@/hooks/useProfile';
 import type { RankInfo, Achievement } from '@/hooks/useGamification';
@@ -21,7 +22,7 @@ interface DashboardProps {
 }
 
 const Dashboard = ({ onNavigate, profile, gamification }: DashboardProps) => {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateStr();
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -119,7 +120,13 @@ const Dashboard = ({ onNavigate, profile, gamification }: DashboardProps) => {
         ))}
       </div>
 
-      <AchievementsGrid achievements={gamification.achievements} />
+      <AchievementsGrid
+        achievements={gamification.achievements}
+        streak={gamification.streak}
+        sessionCount={sessions.length}
+        completedTasks={tasks.filter(t => t.completed).length}
+        totalMinutes={sessions.reduce((a, s) => a + s.duration, 0)}
+      />
 
       {pendingTasks.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="p-4 rounded-xl bg-card border border-border card-shadow">
