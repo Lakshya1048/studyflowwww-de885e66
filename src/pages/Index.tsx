@@ -26,7 +26,6 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState<TabId>('dashboard');
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [showSplash, setShowSplash] = useState(true);
   const [onboardingDone, setOnboardingDone] = useLocalStorage<boolean>('studyflow-onboarding-done', false);
 
   useStudyNotifications(profile?.display_name);
