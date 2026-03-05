@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Clock, CheckCircle2, Target, Flame } from 'lucide-react';
 import type { StudySession, StudyTask } from '@/lib/types';
+import { getLocalDateStr } from '@/lib/utils';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import AchievementsGrid from '@/components/AchievementsGrid';
 import type { Achievement, RankInfo } from '@/hooks/useGamification';
