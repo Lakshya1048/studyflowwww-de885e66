@@ -123,7 +123,7 @@ const FocusTimer = () => {
   const saveOrUpdateSession = useCallback((totalMins: number) => {
     if (totalMins <= 0) return;
     const rounded = Math.round(totalMins * 10) / 10;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getLocalDateStr();
 
     if (activeSessionId) {
       // Update existing session
