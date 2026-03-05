@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckSquare, Timer, TrendingUp, ArrowRight, FileText, Bell, X } from 'lucide-react';
 import type { TabId, StudyTask, StudySession } from '@/lib/types';
+import { getLocalDateStr } from '@/lib/utils';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import type { Profile } from '@/hooks/useProfile';
 import type { RankInfo, Achievement } from '@/hooks/useGamification';
