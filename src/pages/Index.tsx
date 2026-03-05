@@ -1,7 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { AnimatePresence } from 'framer-motion';
 import Sidebar from '@/components/Sidebar';
-import SplashScreen from '@/components/SplashScreen';
 import Dashboard from '@/components/Dashboard';
 import TaskManager from '@/components/TaskManager';
 import FocusTimer from '@/components/FocusTimer';
