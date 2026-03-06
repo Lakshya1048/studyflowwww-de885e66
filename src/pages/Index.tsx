@@ -29,6 +29,16 @@ const Index = () => {
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [onboardingDone, setOnboardingDone] = useLocalStorage<boolean>('studyflow-onboarding-done', false);
+  const [appSettings] = useLocalStorage<AppSettings>('studyflow-settings', DEFAULT_SETTINGS);
+
+  // Apply compact mode on mount
+  useEffect(() => {
+    if (appSettings.compactMode) {
+      document.documentElement.classList.add('compact-mode');
+    } else {
+      document.documentElement.classList.remove('compact-mode');
+    }
+  }, [appSettings.compactMode]);
 
   useStudyNotifications(profile?.display_name);
 
