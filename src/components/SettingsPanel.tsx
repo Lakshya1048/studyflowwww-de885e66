@@ -188,7 +188,7 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
         toast({ title: `Data restored ✓`, description: `${validKeys.length} categories imported. Reloading…` });
         setTimeout(() => window.location.reload(), 1000);
       } catch {
-        toast({ title: 'Import failed', description: 'Could not parse the file. Make sure it's a valid StudyFlow backup.', variant: 'destructive' });
+        toast({ title: 'Import failed', description: "Could not parse the file. Make sure it is a valid StudyFlow backup.", variant: 'destructive' });
       }
     };
     input.click();
