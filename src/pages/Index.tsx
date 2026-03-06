@@ -15,6 +15,8 @@ import { useGamification } from '@/hooks/useGamification';
 import type { TabId, StreakData, StudySession } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { getLocalDateStr } from '@/lib/utils';
+import type { AppSettings } from '@/components/SettingsPanel';
+import { DEFAULT_SETTINGS } from '@/components/SettingsPanel';
 import { useStudyNotifications } from '@/hooks/useStudyNotifications';
 import { Moon, Sun, Settings } from 'lucide-react';
 import OfflineIndicator from '@/components/OfflineIndicator';
