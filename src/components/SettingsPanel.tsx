@@ -400,6 +400,13 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
                     Export all data (JSON)
                   </button>
                   <button
+                    onClick={importData}
+                    className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-secondary hover:bg-muted transition-colors text-sm text-foreground"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Import data from backup
+                  </button>
+                  <button
                     onClick={clearStudyData}
                     className="w-full flex items-center gap-2 px-4 py-3 rounded-xl border border-destructive/30 text-destructive hover:bg-destructive/5 transition-colors text-sm"
                   >
