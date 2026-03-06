@@ -116,51 +116,85 @@ const AchievementsGrid = ({ achievements, streak = 0, sessionCount = 0, complete
                 )}
               </div>
 
-              {/* Hover tooltip */}
+              {/* Mobile bottom sheet / Desktop tooltip */}
               <AnimatePresence>
                 {isHovered && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 6, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-44 p-3 rounded-xl bg-popover border border-border shadow-lg"
-                  >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-lg">{isUnlocked ? badge.icon : '🔒'}</span>
-                      <p className="text-xs font-bold text-foreground">{badge.title}</p>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground leading-snug mb-2">
-                      {badge.description}
-                    </p>
-
-                    {isUnlocked ? (
-                      <p className="text-[10px] text-primary font-medium">
-                        ✅ Unlocked {new Date(badge.unlockedAt!).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
-                      </p>
-                    ) : progress ? (
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-[10px]">
-                          <span className="text-muted-foreground">{Math.round(progress.pct)}%</span>
-                          <span className="text-muted-foreground">
-                            {progress.current}/{progress.target}
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 rounded-full bg-border overflow-hidden">
-                          <motion.div
-                            className="h-full rounded-full gradient-primary"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${progress.pct}%` }}
-                            transition={{ duration: 0.4 }}
-                          />
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">{progress.label}</p>
+                  <>
+                    {/* Mobile: fixed bottom sheet */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 40 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 40 }}
+                      transition={{ duration: 0.2 }}
+                      className="md:hidden fixed inset-x-0 bottom-0 z-[100] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] rounded-t-2xl bg-popover border-t border-border shadow-2xl"
+                    >
+                      <div className="w-10 h-1 rounded-full bg-border mx-auto mb-3" />
+                      <div className="flex items-center gap-2.5 mb-2">
+                        <span className="text-2xl">{isUnlocked ? badge.icon : '🔒'}</span>
+                        <p className="text-sm font-bold text-foreground">{badge.title}</p>
                       </div>
-                    ) : null}
+                      <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                        {badge.description}
+                      </p>
+                      {isUnlocked ? (
+                        <p className="text-xs text-primary font-medium">
+                          ✅ Unlocked {new Date(badge.unlockedAt!).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                        </p>
+                      ) : progress ? (
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">{Math.round(progress.pct)}%</span>
+                            <span className="text-muted-foreground">{progress.current}/{progress.target}</span>
+                          </div>
+                          <div className="w-full h-2 rounded-full bg-border overflow-hidden">
+                            <motion.div className="h-full rounded-full gradient-primary" initial={{ width: 0 }} animate={{ width: `${progress.pct}%` }} transition={{ duration: 0.4 }} />
+                          </div>
+                          <p className="text-xs text-muted-foreground">{progress.label}</p>
+                        </div>
+                      ) : null}
+                    </motion.div>
+                    {/* Mobile backdrop */}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="md:hidden fixed inset-0 z-[99] bg-black/40"
+                      onClick={() => setHoveredId(null)}
+                      onTouchStart={() => setHoveredId(null)}
+                    />
 
-                    {/* Arrow */}
-                    <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 rotate-45 bg-popover border-r border-b border-border" />
-                  </motion.div>
+                    {/* Desktop: popover tooltip */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 6, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="hidden md:block absolute z-50 left-1/2 -translate-x-1/2 bottom-full mb-2 w-44 p-3 rounded-xl bg-popover border border-border shadow-lg"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-lg">{isUnlocked ? badge.icon : '🔒'}</span>
+                        <p className="text-xs font-bold text-foreground">{badge.title}</p>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-snug mb-2">{badge.description}</p>
+                      {isUnlocked ? (
+                        <p className="text-[10px] text-primary font-medium">
+                          ✅ Unlocked {new Date(badge.unlockedAt!).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                        </p>
+                      ) : progress ? (
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-muted-foreground">{Math.round(progress.pct)}%</span>
+                            <span className="text-muted-foreground">{progress.current}/{progress.target}</span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-border overflow-hidden">
+                            <motion.div className="h-full rounded-full gradient-primary" initial={{ width: 0 }} animate={{ width: `${progress.pct}%` }} transition={{ duration: 0.4 }} />
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">{progress.label}</p>
+                        </div>
+                      ) : null}
+                      <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 rotate-45 bg-popover border-r border-b border-border" />
+                    </motion.div>
+                  </>
                 )}
               </AnimatePresence>
             </motion.div>
