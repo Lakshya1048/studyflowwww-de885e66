@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Target, Save, Moon, Sun, Trash2, Bell, BellOff, Clock, Volume2, VolumeX, Shield, Palette, Info, Download, HelpCircle } from 'lucide-react';
+import { X, User, Target, Save, Moon, Sun, Trash2, Bell, BellOff, Clock, Volume2, VolumeX, Shield, Palette, Info, Download, Upload, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -148,9 +148,11 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
     toast({ title: 'Study data cleared' });
   };
 
+  const BACKUP_KEYS = ['studyflow-tasks', 'studyflow-sessions', 'studyflow-revisions', 'studyflow-task-minutes', 'studyflow-profile', 'studyflow-settings'];
+
   const exportData = () => {
     const data: Record<string, unknown> = {};
-    ['studyflow-tasks', 'studyflow-sessions', 'studyflow-revisions', 'studyflow-task-minutes', 'studyflow-profile', 'studyflow-settings'].forEach((k) => {
+    BACKUP_KEYS.forEach((k) => {
       const val = localStorage.getItem(k);
       if (val) data[k] = JSON.parse(val);
     });
@@ -162,6 +164,34 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
     a.click();
     URL.revokeObjectURL(url);
     toast({ title: 'Data exported ✓' });
+  };
+
+  const importData = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text) as Record<string, unknown>;
+        const validKeys = BACKUP_KEYS.filter((k) => k in data);
+        if (validKeys.length === 0) {
+          toast({ title: 'Invalid backup file', description: 'No recognizable StudyFlow data found.', variant: 'destructive' });
+          return;
+        }
+        if (!confirm(`This will restore ${validKeys.length} data categories. Existing data will be overwritten. Continue?`)) return;
+        validKeys.forEach((k) => {
+          localStorage.setItem(k, JSON.stringify(data[k]));
+        });
+        toast({ title: `Data restored ✓`, description: `${validKeys.length} categories imported. Reloading…` });
+        setTimeout(() => window.location.reload(), 1000);
+      } catch {
+        toast({ title: 'Import failed', description: "Could not parse the file. Make sure it is a valid StudyFlow backup.", variant: 'destructive' });
+      }
+    };
+    input.click();
   };
 
   return (
@@ -368,6 +398,13 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
                   >
                     <Download className="w-4 h-4" />
                     Export all data (JSON)
+                  </button>
+                  <button
+                    onClick={importData}
+                    className="w-full flex items-center gap-2 px-4 py-3 rounded-xl bg-secondary hover:bg-muted transition-colors text-sm text-foreground"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Import data from backup
                   </button>
                   <button
                     onClick={clearStudyData}
