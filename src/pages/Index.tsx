@@ -92,6 +92,7 @@ const Index = () => {
       case 'dashboard': return <Dashboard onNavigate={handleTabChange} profile={profile} gamification={gamification} />;
       case 'tasks': return <TaskManager />;
       case 'timer': return <FocusTimer />;
+      case 'calendar': return <CalendarView />;
       case 'progress': return <ProgressTracker achievements={gamification.achievements} rank={gamification.rank} streak={gamification.streak} />;
       default: return null;
     }
