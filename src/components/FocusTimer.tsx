@@ -241,9 +241,12 @@ const FocusTimer = () => {
     }
     setEndTime(null);
     clearInterval(intervalRef.current);
-    // Save progress on pause
+    // Mark pause start time
+    setPauseStartTime(Date.now());
+    // Save progress on pause (subtract already paused time)
     if (!isBreak && sessionStartTime) {
-      const totalElapsed = (Date.now() - sessionStartTime) / 60000;
+      const actualStudyMs = (Date.now() - sessionStartTime) - (totalPausedMs || 0);
+      const totalElapsed = Math.max(0, actualStudyMs / 60000);
       if (totalElapsed >= 0.1) {
         saveOrUpdateSession(totalElapsed);
       }
