@@ -52,6 +52,10 @@ const FocusTimer = () => {
 
   // Realtime tracking: when the current session started
   const [sessionStartTime, setSessionStartTime] = useLocalStorage<number | null>('studyflow-session-start', null);
+  // Total milliseconds spent paused during this session
+  const [totalPausedMs, setTotalPausedMs] = useLocalStorage<number>('studyflow-total-paused', 0);
+  // When the current pause started (null if not paused)
+  const [pauseStartTime, setPauseStartTime] = useLocalStorage<number | null>('studyflow-pause-start', null);
   // The ID of the current running session (so we update it instead of creating duplicates)
   const [activeSessionId, setActiveSessionId] = useLocalStorage<string | null>('studyflow-active-session-id', null);
 
