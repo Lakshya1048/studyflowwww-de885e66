@@ -175,13 +175,16 @@ const FocusTimer = () => {
 
   const finishSession = useCallback(() => {
     if (!isBreak && sessionStartTime) {
-      const totalElapsed = (Date.now() - sessionStartTime) / 60000;
+      const actualStudyMs = (Date.now() - sessionStartTime) - (totalPausedMs || 0);
+      const totalElapsed = Math.max(0, actualStudyMs / 60000);
       if (totalElapsed > 0) {
         saveOrUpdateSession(totalElapsed);
       }
     }
     setSessionStartTime(null);
     setActiveSessionId(null);
+    setTotalPausedMs(0);
+    setPauseStartTime(null);
 
     const nextIsBreak = !isBreak;
     setIsBreak(nextIsBreak);
