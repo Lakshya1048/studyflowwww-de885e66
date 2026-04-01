@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckSquare, Timer, BarChart3, LayoutDashboard, Moon, Sun, MessageCircleQuestion, FileText, Settings, User } from 'lucide-react';
+import { CheckSquare, Timer, BarChart3, LayoutDashboard, Moon, Sun, MessageCircleQuestion, FileText, Settings, User, CalendarDays } from 'lucide-react';
 import type { TabId, StreakData } from '@/lib/types';
 import type { Profile } from '@/hooks/useProfile';
 import type { RankInfo } from '@/hooks/useGamification';
