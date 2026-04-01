@@ -256,7 +256,8 @@ const FocusTimer = () => {
   const reset = () => {
     // Save any progress before resetting
     if (isRunning && !isBreak && sessionStartTime) {
-      const totalElapsed = (Date.now() - sessionStartTime) / 60000;
+      const actualStudyMs = (Date.now() - sessionStartTime) - (totalPausedMs || 0);
+      const totalElapsed = Math.max(0, actualStudyMs / 60000);
       if (totalElapsed >= 0.1) {
         saveOrUpdateSession(totalElapsed);
       }
@@ -267,6 +268,8 @@ const FocusTimer = () => {
     setEndTime(null);
     setSessionStartTime(null);
     setActiveSessionId(null);
+    setTotalPausedMs(0);
+    setPauseStartTime(null);
     clearInterval(intervalRef.current);
   };
 
