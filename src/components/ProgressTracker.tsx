@@ -20,10 +20,18 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
 
   const stats = useMemo(() => {
     const today = getLocalDateStr();
-    const weekAgo = getLocalDateStr(new Date(Date.now() - 7 * 86400000));
+    
+    // Get Monday of the current week
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ...
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const monday = new Date(now);
+    monday.setDate(monday.getDate() - mondayOffset);
+    monday.setHours(0, 0, 0, 0);
+    const mondayStr = getLocalDateStr(monday);
 
     const todaySessions = sessions.filter((s) => s.date === today);
-    const weekSessions = sessions.filter((s) => s.date >= weekAgo);
+    const weekSessions = sessions.filter((s) => s.date >= mondayStr && s.date <= today);
     const totalMinutes = sessions.reduce((a, s) => a + s.duration, 0);
     const todayMinutes = todaySessions.reduce((a, s) => a + s.duration, 0);
     const weekMinutes = weekSessions.reduce((a, s) => a + s.duration, 0);
@@ -37,9 +45,11 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5);
 
+    // Show Mon–Sun of the current week
     const days: { label: string; minutes: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(Date.now() - i * 86400000);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
       const dateStr = getLocalDateStr(d);
       const dayLabel = d.toLocaleDateString('en', { weekday: 'short' });
       const mins = sessions.filter((s) => s.date === dateStr).reduce((a, s) => a + s.duration, 0);
