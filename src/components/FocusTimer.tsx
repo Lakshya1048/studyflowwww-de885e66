@@ -99,7 +99,8 @@ const FocusTimer = () => {
     } else if (endTime && endTime <= Date.now()) {
       // Timer expired while closed — save the accumulated time
       if (sessionStartTime && timerMode !== 'break') {
-        const totalElapsed = (Date.now() - sessionStartTime) / 60000;
+        const actualStudyMs = (Date.now() - sessionStartTime) - (totalPausedMs || 0);
+        const totalElapsed = Math.max(0, actualStudyMs / 60000);
         if (totalElapsed >= 0.1) {
           saveOrUpdateSession(totalElapsed);
         }
