@@ -219,8 +219,16 @@ const FocusTimer = () => {
     setTimerMode(isBreak ? 'break' : 'focus');
     setTimerSubject(subject);
     setIsRunning(true);
+    // If resuming from pause, account for paused duration
+    if (pauseStartTime) {
+      const pausedDuration = Date.now() - pauseStartTime;
+      setTotalPausedMs((prev) => (prev || 0) + pausedDuration);
+      setPauseStartTime(null);
+    }
     if (!isBreak && !sessionStartTime) {
       setSessionStartTime(Date.now());
+      setTotalPausedMs(0);
+      setPauseStartTime(null);
       setActiveSessionId(null); // will be created on first save
     }
   };
