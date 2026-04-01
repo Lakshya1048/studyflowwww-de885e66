@@ -75,9 +75,22 @@ export function useGamification() {
   const sessionCount = sessions.length;
 
   const streak = useMemo(() => {
-    // Merge session dates and task-completion active days
-    const sessionDates = sessions.map(s => s.date);
-    const allDates = [...new Set([...sessionDates, ...activeDays])].sort().reverse();
+    // Build a map of date -> total minutes from sessions
+    const minutesByDate: Record<string, number> = {};
+    sessions.forEach((s) => {
+      minutesByDate[s.date] = (minutesByDate[s.date] || 0) + s.duration;
+    });
+
+    // Merge session dates and task-completion active days, but only count days with >= 60 mins of study
+    // Active days from task completions still count (they represent meaningful activity)
+    const qualifyingDates = new Set<string>();
+    Object.entries(minutesByDate).forEach(([date, mins]) => {
+      if (mins >= 60) qualifyingDates.add(date);
+    });
+    // Active days from tasks also qualify
+    activeDays.forEach((d) => qualifyingDates.add(d));
+
+    const allDates = [...qualifyingDates].sort().reverse();
     let currentStreak = 0;
     const today = new Date();
     const todayStr = getLocalDateStr(today);

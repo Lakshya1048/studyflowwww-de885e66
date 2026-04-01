@@ -5,6 +5,7 @@ import TaskManager from '@/components/TaskManager';
 import FocusTimer from '@/components/FocusTimer';
 import PdfManager from '@/components/PdfManager';
 import ProgressTracker from '@/components/ProgressTracker';
+import CalendarView from '@/components/CalendarView';
 import DoubtSolver from '@/components/DoubtSolver';
 import SettingsPanel from '@/components/SettingsPanel';
 import OnboardingScreen from '@/components/OnboardingScreen';
@@ -91,6 +92,7 @@ const Index = () => {
       case 'dashboard': return <Dashboard onNavigate={handleTabChange} profile={profile} gamification={gamification} />;
       case 'tasks': return <TaskManager />;
       case 'timer': return <FocusTimer />;
+      case 'calendar': return <CalendarView />;
       case 'progress': return <ProgressTracker achievements={gamification.achievements} rank={gamification.rank} streak={gamification.streak} />;
       default: return null;
     }

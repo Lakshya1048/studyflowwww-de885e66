@@ -35,4 +35,4 @@ export interface StreakData {
   totalTasksCompleted: number;
 }
 
-export type TabId = 'dashboard' | 'tasks' | 'timer' | 'progress' | 'notes' | 'pdfs' | 'doubts';
+export type TabId = 'dashboard' | 'tasks' | 'timer' | 'progress' | 'notes' | 'pdfs' | 'doubts' | 'calendar';
