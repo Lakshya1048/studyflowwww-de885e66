@@ -5,6 +5,7 @@ import TaskManager from '@/components/TaskManager';
 import FocusTimer from '@/components/FocusTimer';
 import PdfManager from '@/components/PdfManager';
 import ProgressTracker from '@/components/ProgressTracker';
+import CalendarView from '@/components/CalendarView';
 import DoubtSolver from '@/components/DoubtSolver';
 import SettingsPanel from '@/components/SettingsPanel';
 import OnboardingScreen from '@/components/OnboardingScreen';
