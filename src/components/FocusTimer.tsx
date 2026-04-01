@@ -52,6 +52,10 @@ const FocusTimer = () => {
 
   // Realtime tracking: when the current session started
   const [sessionStartTime, setSessionStartTime] = useLocalStorage<number | null>('studyflow-session-start', null);
+  // Total milliseconds spent paused during this session
+  const [totalPausedMs, setTotalPausedMs] = useLocalStorage<number>('studyflow-total-paused', 0);
+  // When the current pause started (null if not paused)
+  const [pauseStartTime, setPauseStartTime] = useLocalStorage<number | null>('studyflow-pause-start', null);
   // The ID of the current running session (so we update it instead of creating duplicates)
   const [activeSessionId, setActiveSessionId] = useLocalStorage<string | null>('studyflow-active-session-id', null);
 
@@ -95,7 +99,8 @@ const FocusTimer = () => {
     } else if (endTime && endTime <= Date.now()) {
       // Timer expired while closed — save the accumulated time
       if (sessionStartTime && timerMode !== 'break') {
-        const totalElapsed = (Date.now() - sessionStartTime) / 60000;
+        const actualStudyMs = (Date.now() - sessionStartTime) - (totalPausedMs || 0);
+        const totalElapsed = Math.max(0, actualStudyMs / 60000);
         if (totalElapsed >= 0.1) {
           saveOrUpdateSession(totalElapsed);
         }
@@ -103,6 +108,8 @@ const FocusTimer = () => {
       setEndTime(null);
       setSessionStartTime(null);
       setActiveSessionId(null);
+      setTotalPausedMs(0);
+      setPauseStartTime(null);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -156,7 +163,8 @@ const FocusTimer = () => {
   useEffect(() => {
     if (isRunning && !isBreak && sessionStartTime) {
       saveIntervalRef.current = setInterval(() => {
-        const totalElapsedMins = (Date.now() - sessionStartTime) / 60000;
+        const actualStudyMs = (Date.now() - sessionStartTime) - (totalPausedMs || 0);
+        const totalElapsedMins = Math.max(0, actualStudyMs / 60000);
         if (totalElapsedMins >= 0.1) {
           saveOrUpdateSession(totalElapsedMins);
         }
@@ -167,13 +175,16 @@ const FocusTimer = () => {
 
   const finishSession = useCallback(() => {
     if (!isBreak && sessionStartTime) {
-      const totalElapsed = (Date.now() - sessionStartTime) / 60000;
+      const actualStudyMs = (Date.now() - sessionStartTime) - (totalPausedMs || 0);
+      const totalElapsed = Math.max(0, actualStudyMs / 60000);
       if (totalElapsed > 0) {
         saveOrUpdateSession(totalElapsed);
       }
     }
     setSessionStartTime(null);
     setActiveSessionId(null);
+    setTotalPausedMs(0);
+    setPauseStartTime(null);
 
     const nextIsBreak = !isBreak;
     setIsBreak(nextIsBreak);
@@ -208,8 +219,16 @@ const FocusTimer = () => {
     setTimerMode(isBreak ? 'break' : 'focus');
     setTimerSubject(subject);
     setIsRunning(true);
+    // If resuming from pause, account for paused duration
+    if (pauseStartTime) {
+      const pausedDuration = Date.now() - pauseStartTime;
+      setTotalPausedMs((prev) => (prev || 0) + pausedDuration);
+      setPauseStartTime(null);
+    }
     if (!isBreak && !sessionStartTime) {
       setSessionStartTime(Date.now());
+      setTotalPausedMs(0);
+      setPauseStartTime(null);
       setActiveSessionId(null); // will be created on first save
     }
   };
@@ -222,9 +241,12 @@ const FocusTimer = () => {
     }
     setEndTime(null);
     clearInterval(intervalRef.current);
-    // Save progress on pause
+    // Mark pause start time
+    setPauseStartTime(Date.now());
+    // Save progress on pause (subtract already paused time)
     if (!isBreak && sessionStartTime) {
-      const totalElapsed = (Date.now() - sessionStartTime) / 60000;
+      const actualStudyMs = (Date.now() - sessionStartTime) - (totalPausedMs || 0);
+      const totalElapsed = Math.max(0, actualStudyMs / 60000);
       if (totalElapsed >= 0.1) {
         saveOrUpdateSession(totalElapsed);
       }
@@ -234,7 +256,8 @@ const FocusTimer = () => {
   const reset = () => {
     // Save any progress before resetting
     if (isRunning && !isBreak && sessionStartTime) {
-      const totalElapsed = (Date.now() - sessionStartTime) / 60000;
+      const actualStudyMs = (Date.now() - sessionStartTime) - (totalPausedMs || 0);
+      const totalElapsed = Math.max(0, actualStudyMs / 60000);
       if (totalElapsed >= 0.1) {
         saveOrUpdateSession(totalElapsed);
       }
@@ -245,6 +268,8 @@ const FocusTimer = () => {
     setEndTime(null);
     setSessionStartTime(null);
     setActiveSessionId(null);
+    setTotalPausedMs(0);
+    setPauseStartTime(null);
     clearInterval(intervalRef.current);
   };
 
@@ -303,12 +328,12 @@ const FocusTimer = () => {
             <p className="text-sm text-muted-foreground">Sessions Today</p>
           </div>
           <div>
-            <p className="text-3xl font-display font-bold text-foreground">{todayMinutes}m</p>
+            <p className="text-3xl font-display font-bold text-foreground">{Math.round(todayMinutes * 10) / 10}m</p>
             <p className="text-sm text-muted-foreground">Minutes Studied</p>
           </div>
           {selectedTask && spentOnTask > 0 && (
             <div>
-              <p className="text-3xl font-display font-bold text-foreground">{spentOnTask}m</p>
+              <p className="text-3xl font-display font-bold text-foreground">{Math.round(spentOnTask * 10) / 10}m</p>
               <p className="text-sm text-muted-foreground">On This Task</p>
             </div>
           )}
@@ -510,7 +535,7 @@ const FocusTimer = () => {
           <p className="text-xs text-muted-foreground">Sessions Today</p>
         </div>
         <div className="p-3 rounded-lg bg-card border border-border card-shadow text-center">
-          <p className="text-2xl font-display font-bold text-foreground">{Math.round(todayMinutes)}</p>
+          <p className="text-2xl font-display font-bold text-foreground">{Math.round(todayMinutes * 10) / 10}</p>
           <p className="text-xs text-muted-foreground">Minutes Studied</p>
         </div>
       </div>
