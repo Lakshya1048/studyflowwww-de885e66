@@ -535,7 +535,7 @@ const FocusTimer = () => {
           <p className="text-xs text-muted-foreground">Sessions Today</p>
         </div>
         <div className="p-3 rounded-lg bg-card border border-border card-shadow text-center">
-          <p className="text-2xl font-display font-bold text-foreground">{Math.round(todayMinutes)}</p>
+          <p className="text-2xl font-display font-bold text-foreground">{Math.round(todayMinutes * 10) / 10}</p>
           <p className="text-xs text-muted-foreground">Minutes Studied</p>
         </div>
       </div>
