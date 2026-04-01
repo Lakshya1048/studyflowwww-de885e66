@@ -328,7 +328,7 @@ const FocusTimer = () => {
             <p className="text-sm text-muted-foreground">Sessions Today</p>
           </div>
           <div>
-            <p className="text-3xl font-display font-bold text-foreground">{todayMinutes}m</p>
+            <p className="text-3xl font-display font-bold text-foreground">{Math.round(todayMinutes * 10) / 10}m</p>
             <p className="text-sm text-muted-foreground">Minutes Studied</p>
           </div>
           {selectedTask && spentOnTask > 0 && (
