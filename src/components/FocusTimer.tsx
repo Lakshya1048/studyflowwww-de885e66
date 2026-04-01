@@ -108,6 +108,8 @@ const FocusTimer = () => {
       setEndTime(null);
       setSessionStartTime(null);
       setActiveSessionId(null);
+      setTotalPausedMs(0);
+      setPauseStartTime(null);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
