@@ -163,7 +163,8 @@ const FocusTimer = () => {
   useEffect(() => {
     if (isRunning && !isBreak && sessionStartTime) {
       saveIntervalRef.current = setInterval(() => {
-        const totalElapsedMins = (Date.now() - sessionStartTime) / 60000;
+        const actualStudyMs = (Date.now() - sessionStartTime) - (totalPausedMs || 0);
+        const totalElapsedMins = Math.max(0, actualStudyMs / 60000);
         if (totalElapsedMins >= 0.1) {
           saveOrUpdateSession(totalElapsedMins);
         }
