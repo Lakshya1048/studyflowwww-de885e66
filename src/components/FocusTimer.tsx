@@ -333,7 +333,7 @@ const FocusTimer = () => {
           </div>
           {selectedTask && spentOnTask > 0 && (
             <div>
-              <p className="text-3xl font-display font-bold text-foreground">{spentOnTask}m</p>
+              <p className="text-3xl font-display font-bold text-foreground">{Math.round(spentOnTask * 10) / 10}m</p>
               <p className="text-sm text-muted-foreground">On This Task</p>
             </div>
           )}
