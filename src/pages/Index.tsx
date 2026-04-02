@@ -159,6 +159,9 @@ const Index = () => {
         </main>
       </div>
 
+      {/* Floating mini timer — visible when not on timer tab */}
+      <FloatingTimer visible={activeTab !== 'timer'} onGoToTimer={() => setActiveTab('timer')} />
+
       {/* Mobile bottom navigation */}
       <MobileBottomNav activeTab={activeTab} onTabChange={handleTabChange} />
     </>
