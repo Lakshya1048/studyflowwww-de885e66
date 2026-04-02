@@ -101,7 +101,7 @@ export function useGamification() {
       else break;
     }
     return currentStreak;
-  }, [sessions, activeDays]);
+  }, [sessions]);
 
   const totalMinutes = useMemo(() => sessions.reduce((a, s) => a + s.duration, 0), [sessions]);
   const completedTasks = useMemo(() => tasks.filter(t => t.completed).length, [tasks]);

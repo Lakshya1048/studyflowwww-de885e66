@@ -5,6 +5,7 @@ export interface StudyTask {
   completed: boolean;
   dueDate: string;
   createdAt: string;
+  needsRevision?: boolean;
 }
 
 export interface TimeSlot {
