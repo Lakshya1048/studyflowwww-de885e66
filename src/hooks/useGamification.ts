@@ -87,9 +87,6 @@ export function useGamification() {
     Object.entries(minutesByDate).forEach(([date, mins]) => {
       if (mins >= 60) qualifyingDates.add(date);
     });
-    // Active days from tasks also qualify
-    activeDays.forEach((d) => qualifyingDates.add(d));
-
     const allDates = [...qualifyingDates].sort().reverse();
     let currentStreak = 0;
     const today = new Date();
