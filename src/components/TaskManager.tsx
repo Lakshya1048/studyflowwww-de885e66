@@ -1,12 +1,13 @@
 import { useState, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Check, AlertCircle, Trash2, ChevronLeft, ChevronRight, RotateCcw, Calendar, Search, BookOpen, Pencil, X } from 'lucide-react';
+import { Plus, Check, AlertCircle, Trash2, ChevronLeft, ChevronRight, RotateCcw, Calendar, Search, BookOpen, Pencil, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import type { StudyTask } from '@/lib/types';
+import type { StudyTask, TaskCategory } from '@/lib/types';
+import { TASK_CATEGORIES } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 interface RevisionItem {
@@ -47,11 +48,24 @@ const priorityColors: Record<string, string> = {
   English: 'bg-purple-500/15 text-purple-700 dark:text-purple-300',
   AI: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300',
   IP: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
-  // Legacy mappings
   Mathematics: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
   Biology: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
   History: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
   General: 'bg-muted text-muted-foreground',
+};
+
+const categoryColors: Record<TaskCategory, string> = {
+  'Coaching': 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300',
+  'Arjuna Batch': 'bg-rose-500/15 text-rose-700 dark:text-rose-300',
+  'School': 'bg-teal-500/15 text-teal-700 dark:text-teal-300',
+  'Self Study': 'bg-violet-500/15 text-violet-700 dark:text-violet-300',
+};
+
+const categoryEmojis: Record<TaskCategory, string> = {
+  'Coaching': '🏫',
+  'Arjuna Batch': '🎯',
+  'School': '📚',
+  'Self Study': '💡',
 };
 
 const getSubjectStyle = (subject: string) =>
@@ -68,9 +82,12 @@ const TaskManager = () => {
   const [customSubject, setCustomSubject] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [needsRevision, setNeedsRevision] = useState(false);
+  const [category, setCategory] = useState<TaskCategory>('Self Study');
   const [selectedDate, setSelectedDate] = useState(() => getLocalDateStr());
   const [activeView, setActiveView] = useState<'tasks' | 'overdue' | 'revision'>('tasks');
   const [searchQuery, setSearchQuery] = useState('');
+  const [collapsedCategories, setCollapsedCategories] = useLocalStorage<string[]>('studyflow-collapsed-cats', []);
+  const [addingForCategory, setAddingForCategory] = useState<TaskCategory | null>(null);
 
   // Revision topic add form
   const [revTopicTitle, setRevTopicTitle] = useState('');
@@ -86,8 +103,17 @@ const TaskManager = () => {
     setCustomSubject('');
     setDueDate('');
     setNeedsRevision(false);
+    setCategory('Self Study');
     setEditingTask(null);
     setShowAdd(false);
+    setAddingForCategory(null);
+  };
+
+  const startAdd = (cat?: TaskCategory) => {
+    resetForm();
+    if (cat) setCategory(cat);
+    setAddingForCategory(cat || null);
+    setShowAdd(true);
   };
 
   const startEdit = (task: StudyTask) => {
@@ -103,6 +129,7 @@ const TaskManager = () => {
     }
     setDueDate(task.dueDate);
     setNeedsRevision(task.needsRevision || false);
+    setCategory(task.category || 'Self Study');
     setShowAdd(true);
   };
 
@@ -149,6 +176,7 @@ const TaskManager = () => {
       dueDate: dueDate || selectedDate,
       createdAt: new Date().toISOString(),
       needsRevision,
+      category,
     };
     setTasks((prev) => [task, ...prev]);
     scheduleRevisions(task);
@@ -161,7 +189,7 @@ const TaskManager = () => {
     setTasks((prev) =>
       prev.map((t) =>
         t.id === editingTask.id
-          ? { ...t, title: title.trim(), subject: resolvedSubject, dueDate: dueDate || t.dueDate, needsRevision }
+          ? { ...t, title: title.trim(), subject: resolvedSubject, dueDate: dueDate || t.dueDate, needsRevision, category }
           : t
       )
     );
@@ -181,10 +209,6 @@ const TaskManager = () => {
     });
   }, [setTasks, setActiveDays]);
 
-  const toggleReviseFlag = useCallback((id: string) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, needsRevision: !t.needsRevision } : t)));
-  }, [setTasks]);
-
   const deleteTask = useCallback((id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
     setRevisions((prev) => prev.filter((r) => r.taskId !== id));
@@ -193,6 +217,10 @@ const TaskManager = () => {
   const toggleRevision = useCallback((id: string) => {
     setRevisions((prev) => prev.map((r) => (r.id === id ? { ...r, completed: !r.completed } : r)));
   }, [setRevisions]);
+
+  const toggleReviseFlag = useCallback((id: string) => {
+    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, needsRevision: !t.needsRevision } : t)));
+  }, [setTasks]);
 
   const addRevisionTopic = () => {
     if (!revTopicTitle.trim()) return;
@@ -215,27 +243,52 @@ const TaskManager = () => {
     setRevisionTopics((prev) => prev.filter((t) => t.id !== id));
   }, [setRevisionTopics]);
 
+  const toggleCategoryCollapse = (cat: string) => {
+    setCollapsedCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
+
   // Filtered lists
   const dateTasks = useMemo(() => tasks.filter((t) => t.dueDate === selectedDate), [tasks, selectedDate]);
-  const pendingTasks = useMemo(() => dateTasks.filter((t) => !t.completed), [dateTasks]);
-  const completedTasks = useMemo(() => dateTasks.filter((t) => t.completed), [dateTasks]);
   const overdueTasks = useMemo(() => tasks.filter((t) => !t.completed && t.dueDate < today), [tasks, today]);
   const todayRevisions = useMemo(() => revisions.filter((r) => r.revisionDate <= today && !r.completed), [revisions, today]);
   const completedRevisions = useMemo(() => revisions.filter((r) => r.completed), [revisions]);
   const manualReviseTasks = useMemo(() => tasks.filter((t) => t.needsRevision), [tasks]);
 
   // Search filter
-  const filteredPending = useMemo(() => {
-    if (!searchQuery) return pendingTasks;
+  const filteredDateTasks = useMemo(() => {
+    if (!searchQuery) return dateTasks;
     const q = searchQuery.toLowerCase();
-    return pendingTasks.filter(t => t.title.toLowerCase().includes(q) || t.subject.toLowerCase().includes(q));
-  }, [pendingTasks, searchQuery]);
+    return dateTasks.filter(t => t.title.toLowerCase().includes(q) || t.subject.toLowerCase().includes(q));
+  }, [dateTasks, searchQuery]);
 
   const totalTaskCount = tasks.length;
   const completedCount = tasks.filter(t => t.completed).length;
   const completionRate = totalTaskCount > 0 ? Math.round((completedCount / totalTaskCount) * 100) : 0;
 
   const isEditing = !!editingTask;
+
+  // Group tasks by category for the daily view
+  const tasksByCategory = useMemo(() => {
+    const grouped: Record<TaskCategory, { pending: StudyTask[]; completed: StudyTask[] }> = {
+      'Coaching': { pending: [], completed: [] },
+      'Arjuna Batch': { pending: [], completed: [] },
+      'School': { pending: [], completed: [] },
+      'Self Study': { pending: [], completed: [] },
+    };
+    filteredDateTasks.forEach((t) => {
+      const cat = t.category || 'Self Study';
+      if (grouped[cat]) {
+        if (t.completed) grouped[cat].completed.push(t);
+        else grouped[cat].pending.push(t);
+      } else {
+        if (t.completed) grouped['Self Study'].completed.push(t);
+        else grouped['Self Study'].pending.push(t);
+      }
+    });
+    return grouped;
+  }, [filteredDateTasks]);
 
   return (
     <div className="space-y-5">
@@ -247,7 +300,7 @@ const TaskManager = () => {
             {completedCount}/{totalTaskCount} completed · {completionRate}% done
           </p>
         </div>
-        <Button size="sm" onClick={() => { resetForm(); setShowAdd(true); }} className="gap-1.5 shadow-sm">
+        <Button size="sm" onClick={() => startAdd()} className="gap-1.5 shadow-sm">
           <Plus className="w-4 h-4" />
           Add Task
         </Button>
@@ -256,7 +309,7 @@ const TaskManager = () => {
       {/* Quick stats bar */}
       <div className="grid grid-cols-3 gap-2">
         <div className="p-3 rounded-xl bg-card border border-border text-center">
-          <p className="text-lg font-bold font-display text-foreground">{pendingTasks.length}</p>
+          <p className="text-lg font-bold font-display text-foreground">{dateTasks.filter(t => !t.completed).length}</p>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Today</p>
         </div>
         <div className="p-3 rounded-xl bg-card border border-border text-center">
@@ -330,7 +383,16 @@ const TaskManager = () => {
                       ))}
                     </SelectContent>
                   </Select>
-                  <Input type="date" value={dueDate || selectedDate} onChange={(e) => setDueDate(e.target.value)} />
+                  <Select value={category} onValueChange={(v) => setCategory(v as TaskCategory)}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TASK_CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>{categoryEmojis[c]} {c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 {subject === 'Other' && (
                   <Input
@@ -339,6 +401,7 @@ const TaskManager = () => {
                     onChange={(e) => setCustomSubject(e.target.value)}
                   />
                 )}
+                <Input type="date" value={dueDate || selectedDate} onChange={(e) => setDueDate(e.target.value)} />
                 <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2">
                     <RotateCcw className="w-3.5 h-3.5 text-primary" />
@@ -362,7 +425,7 @@ const TaskManager = () => {
           )}
         </AnimatePresence>
 
-        {/* Daily Tasks */}
+        {/* Daily Tasks — categorized */}
         <TabsContent value="tasks" className="space-y-3 mt-3">
           {/* Date navigator */}
           <div className="flex items-center justify-center gap-3 p-2.5 rounded-xl bg-card border border-border">
@@ -394,21 +457,73 @@ const TaskManager = () => {
             </div>
           )}
 
-          {/* Pending */}
-          <div className="space-y-2">
-            <AnimatePresence>
-              {filteredPending.map((task, i) => (
-                <TaskItem key={task.id} task={task} isOverdue={false} onToggle={toggleTask} onDelete={deleteTask} onEdit={startEdit} onToggleRevise={toggleReviseFlag} index={i} />
-              ))}
-            </AnimatePresence>
-          </div>
+          {/* Category sections */}
+          {TASK_CATEGORIES.map((cat) => {
+            const { pending, completed: catCompleted } = tasksByCategory[cat];
+            const total = pending.length + catCompleted.length;
+            const isCollapsed = collapsedCategories.includes(cat);
 
-          {/* Completed */}
-          {completedTasks.length > 0 && (
-            <CompletedSection tasks={completedTasks} onToggle={toggleTask} onDelete={deleteTask} onEdit={startEdit} onToggleRevise={toggleReviseFlag} />
-          )}
+            return (
+              <div key={cat} className="rounded-xl border border-border overflow-hidden">
+                {/* Category header */}
+                <button
+                  onClick={() => toggleCategoryCollapse(cat)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-card hover:bg-muted/50 transition-colors"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">{categoryEmojis[cat]}</span>
+                    <span className="text-sm font-semibold text-foreground">{cat}</span>
+                    {total > 0 && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${categoryColors[cat]}`}>
+                        {pending.length}/{total}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startAdd(cat);
+                      }}
+                      className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    {isCollapsed ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronUp className="w-4 h-4 text-muted-foreground" />}
+                  </div>
+                </button>
 
-          {dateTasks.length === 0 && <EmptyState label={isToday ? 'today' : formatDate(selectedDate)} />}
+                {/* Category tasks */}
+                <AnimatePresence>
+                  {!isCollapsed && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="px-3 pb-3 space-y-1.5">
+                        {pending.length === 0 && catCompleted.length === 0 && (
+                          <p className="text-xs text-muted-foreground text-center py-3">No tasks here yet</p>
+                        )}
+                        {pending.map((task, i) => (
+                          <TaskItem key={task.id} task={task} isOverdue={false} onToggle={toggleTask} onDelete={deleteTask} onEdit={startEdit} index={i} />
+                        ))}
+                        {catCompleted.length > 0 && (
+                          <div className="space-y-1.5 pt-1">
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-wider px-1">Done ({catCompleted.length})</p>
+                            {catCompleted.map((task) => (
+                              <CompletedTaskItem key={task.id} task={task} onToggle={toggleTask} onDelete={deleteTask} onEdit={startEdit} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </TabsContent>
 
         {/* Overdue Tasks */}
@@ -424,7 +539,7 @@ const TaskManager = () => {
           ) : (
             <AnimatePresence>
               {overdueTasks.map((task, i) => (
-                <TaskItem key={task.id} task={task} isOverdue onToggle={toggleTask} onDelete={deleteTask} onEdit={startEdit} onToggleRevise={toggleReviseFlag} index={i} />
+                <TaskItem key={task.id} task={task} isOverdue onToggle={toggleTask} onDelete={deleteTask} onEdit={startEdit} index={i} />
               ))}
             </AnimatePresence>
           )}
@@ -604,16 +719,16 @@ const TaskManager = () => {
 };
 
 // Sub-components
-const TaskItem = ({ task, isOverdue, onToggle, onDelete, onEdit, onToggleRevise, index }: {
-  task: StudyTask; isOverdue: boolean; onToggle: (id: string) => void; onDelete: (id: string) => void; onEdit: (task: StudyTask) => void; onToggleRevise: (id: string) => void; index: number;
+const TaskItem = ({ task, isOverdue, onToggle, onDelete, onEdit, index }: {
+  task: StudyTask; isOverdue: boolean; onToggle: (id: string) => void; onDelete: (id: string) => void; onEdit: (task: StudyTask) => void; index: number;
 }) => (
   <motion.div
     initial={{ opacity: 0, y: 8 }}
     animate={{ opacity: 1, y: 0 }}
     exit={{ opacity: 0, x: -40, transition: { duration: 0.2 } }}
     transition={{ delay: index * 0.03 }}
-    className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all group ${
-      isOverdue ? 'bg-destructive/5 border-destructive/20' : 'bg-card border-border shadow-sm'
+    className={`flex items-center gap-3 p-3 rounded-lg border transition-all group ${
+      isOverdue ? 'bg-destructive/5 border-destructive/20' : 'bg-background/50 border-border'
     }`}
   >
     <button
@@ -622,21 +737,21 @@ const TaskItem = ({ task, isOverdue, onToggle, onDelete, onEdit, onToggleRevise,
     />
     <div className="flex-1 min-w-0">
       <p className="text-sm font-medium text-foreground truncate">{task.title}</p>
-      <div className="flex items-center gap-2 mt-1 flex-wrap">
-        <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${getSubjectStyle(task.subject)}`}>
+      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${getSubjectStyle(task.subject)}`}>
           {task.subject}
         </span>
         {task.needsRevision && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-medium">📌 Revise</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">📌</span>
         )}
         {isOverdue && (
-          <span className="text-[11px] text-destructive font-medium flex items-center gap-0.5">
-            <AlertCircle className="w-3 h-3" /> Due {formatDate(task.dueDate)}
+          <span className="text-[10px] text-destructive font-medium flex items-center gap-0.5">
+            <AlertCircle className="w-3 h-3" /> {formatDate(task.dueDate)}
           </span>
         )}
       </div>
     </div>
-    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
       <button onClick={() => onEdit(task)} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
         <Pencil className="w-3.5 h-3.5" />
       </button>
@@ -647,47 +762,25 @@ const TaskItem = ({ task, isOverdue, onToggle, onDelete, onEdit, onToggleRevise,
   </motion.div>
 );
 
-const CompletedSection = ({ tasks, onToggle, onDelete, onEdit, onToggleRevise }: {
-  tasks: StudyTask[]; onToggle: (id: string) => void; onDelete: (id: string) => void; onEdit: (task: StudyTask) => void; onToggleRevise: (id: string) => void;
+const CompletedTaskItem = ({ task, onToggle, onDelete, onEdit }: {
+  task: StudyTask; onToggle: (id: string) => void; onDelete: (id: string) => void; onEdit: (task: StudyTask) => void;
 }) => (
-  <div className="space-y-2">
-    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-      Completed ({tasks.length})
-    </p>
-    {tasks.map((task) => (
-      <div key={task.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 group">
-        <button
-          onClick={() => onToggle(task.id)}
-          className="w-5 h-5 rounded-md bg-primary border-2 border-primary flex items-center justify-center flex-shrink-0 active:scale-90"
-        >
-          <Check className="w-3 h-3 text-primary-foreground" />
-        </button>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm text-muted-foreground line-through truncate">{task.title}</p>
-          {task.needsRevision && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-medium">📌 Revise</span>
-          )}
-        </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-          <button onClick={() => onEdit(task)} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
-            <Pencil className="w-3.5 h-3.5" />
-          </button>
-          <button onClick={() => onDelete(task.id)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-const EmptyState = ({ label }: { label: string }) => (
-  <div className="text-center py-10 text-muted-foreground">
-    <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-3">
-      <Calendar className="w-7 h-7 text-muted-foreground/60" />
+  <div className="flex items-center gap-3 p-2.5 rounded-lg bg-muted/30 group">
+    <button
+      onClick={() => onToggle(task.id)}
+      className="w-4 h-4 rounded bg-primary border-2 border-primary flex items-center justify-center flex-shrink-0 active:scale-90"
+    >
+      <Check className="w-2.5 h-2.5 text-primary-foreground" />
+    </button>
+    <p className="text-xs text-muted-foreground line-through truncate flex-1">{task.title}</p>
+    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all">
+      <button onClick={() => onEdit(task)} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+        <Pencil className="w-3 h-3" />
+      </button>
+      <button onClick={() => onDelete(task.id)} className="p-1 text-muted-foreground hover:text-destructive transition-colors">
+        <Trash2 className="w-3 h-3" />
+      </button>
     </div>
-    <p className="text-sm font-semibold text-foreground">No tasks for {label}</p>
-    <p className="text-xs text-muted-foreground mt-1">Tap "Add Task" to get started</p>
   </div>
 );
 

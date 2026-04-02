@@ -1,3 +1,7 @@
+export type TaskCategory = 'Coaching' | 'Arjuna Batch' | 'School' | 'Self Study';
+
+export const TASK_CATEGORIES: TaskCategory[] = ['Coaching', 'Arjuna Batch', 'School', 'Self Study'];
+
 export interface StudyTask {
   id: string;
   title: string;
@@ -6,6 +10,7 @@ export interface StudyTask {
   dueDate: string;
   createdAt: string;
   needsRevision?: boolean;
+  category?: TaskCategory;
 }
 
 export interface TimeSlot {
