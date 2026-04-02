@@ -61,8 +61,8 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
   }, [sessions, tasks]);
 
   const statCards = [
-    { label: 'Today', value: `${stats.todayMinutes}m`, icon: Clock, color: 'text-primary' },
-    { label: 'This Week', value: `${Math.floor(stats.weekMinutes / 60)}h ${stats.weekMinutes % 60}m`, icon: TrendingUp, color: 'text-accent' },
+    { label: 'Today', value: `${Math.round(stats.todayMinutes)}m`, icon: Clock, color: 'text-primary' },
+    { label: 'This Week', value: `${Math.floor(stats.weekMinutes / 60)}h ${Math.round(stats.weekMinutes % 60)}m`, icon: TrendingUp, color: 'text-accent' },
     { label: 'Total Hours', value: `${Math.floor(stats.totalMinutes / 60)}h`, icon: Target, color: 'text-primary' },
     { label: 'Tasks Done', value: stats.completedTasks.toString(), icon: CheckCircle2, color: 'text-success' },
   ];

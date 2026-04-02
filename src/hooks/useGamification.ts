@@ -87,9 +87,6 @@ export function useGamification() {
     Object.entries(minutesByDate).forEach(([date, mins]) => {
       if (mins >= 60) qualifyingDates.add(date);
     });
-    // Active days from tasks also qualify
-    activeDays.forEach((d) => qualifyingDates.add(d));
-
     const allDates = [...qualifyingDates].sort().reverse();
     let currentStreak = 0;
     const today = new Date();
@@ -104,7 +101,7 @@ export function useGamification() {
       else break;
     }
     return currentStreak;
-  }, [sessions, activeDays]);
+  }, [sessions]);
 
   const totalMinutes = useMemo(() => sessions.reduce((a, s) => a + s.duration, 0), [sessions]);
   const completedTasks = useMemo(() => tasks.filter(t => t.completed).length, [tasks]);
