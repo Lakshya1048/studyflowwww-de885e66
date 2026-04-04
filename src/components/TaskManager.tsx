@@ -237,7 +237,33 @@ const TaskManager = () => {
 
   const deleteRevisionTopic = useCallback((id: string) => {
     setRevisionTopics((prev) => prev.filter((t) => t.id !== id));
-  }, [setRevisionTopics]);
+    if (editingTopic?.id === id) {
+      setEditingTopic(null);
+      setRevTopicTitle('');
+      setRevTopicSubject('');
+      setRevTopicCustomSubject('');
+    }
+  }, [setRevisionTopics, editingTopic]);
+
+  const startEditTopic = (topic: RevisionTopic) => {
+    setEditingTopic(topic);
+    setRevTopicTitle(topic.title);
+    const isPreset = SUBJECTS.includes(topic.subject);
+    if (isPreset) {
+      setRevTopicSubject(topic.subject);
+      setRevTopicCustomSubject('');
+    } else {
+      setRevTopicSubject('Other');
+      setRevTopicCustomSubject(topic.subject);
+    }
+  };
+
+  const cancelEditTopic = () => {
+    setEditingTopic(null);
+    setRevTopicTitle('');
+    setRevTopicSubject('');
+    setRevTopicCustomSubject('');
+  };
 
   const toggleCategoryCollapse = (cat: string) => {
     setCollapsedCategories((prev) =>
