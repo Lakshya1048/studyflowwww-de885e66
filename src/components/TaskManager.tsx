@@ -431,11 +431,6 @@ const TaskManager = () => {
                   </div>
                   <Switch checked={needsRevision} onCheckedChange={setNeedsRevision} />
                 </div>
-                {!isEditing && (
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <RotateCcw className="w-3 h-3" /> Revisions auto-scheduled for +1, +3, +7 days
-                  </p>
-                )}
                 <div className="flex gap-2">
                   <Button size="sm" onClick={isEditing ? saveEdit : addTask} className="flex-1">
                     {isEditing ? 'Save Changes' : 'Add Task'}
