@@ -274,8 +274,6 @@ const TaskManager = () => {
   // Filtered lists
   const dateTasks = useMemo(() => tasks.filter((t) => t.dueDate === selectedDate), [tasks, selectedDate]);
   const overdueTasks = useMemo(() => tasks.filter((t) => !t.completed && t.dueDate < today), [tasks, today]);
-  const todayRevisions = useMemo(() => revisions.filter((r) => r.revisionDate <= today && !r.completed), [revisions, today]);
-  const completedRevisions = useMemo(() => revisions.filter((r) => r.completed), [revisions]);
   const manualReviseTasks = useMemo(() => tasks.filter((t) => t.needsRevision), [tasks]);
 
   // Search filter
