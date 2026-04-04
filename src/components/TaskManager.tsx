@@ -362,9 +362,9 @@ const TaskManager = () => {
           </TabsTrigger>
           <TabsTrigger value="revision" className="flex-1 text-xs gap-1">
             <RotateCcw className="w-3.5 h-3.5" /> Revision
-            {(todayRevisions.length + manualReviseTasks.length + revisionTopics.length) > 0 && (
+            {(manualReviseTasks.length + revisionTopics.length) > 0 && (
               <span className="ml-1 px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
-                {todayRevisions.length + manualReviseTasks.length + revisionTopics.length}
+                {manualReviseTasks.length + revisionTopics.length}
               </span>
             )}
           </TabsTrigger>
