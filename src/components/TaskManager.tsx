@@ -341,7 +341,7 @@ const TaskManager = () => {
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Overdue</p>
         </div>
         <div className="p-3 rounded-xl bg-card border border-border text-center">
-          <p className="text-lg font-bold font-display text-primary">{todayRevisions.length}</p>
+          <p className="text-lg font-bold font-display text-primary">{manualReviseTasks.length + revisionTopics.length}</p>
           <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Revisions</p>
         </div>
       </div>
