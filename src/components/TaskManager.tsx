@@ -211,13 +211,25 @@ const TaskManager = () => {
     const resolvedSubject = revTopicSubject === 'Other'
       ? (revTopicCustomSubject.trim() || 'General')
       : (revTopicSubject || 'General');
-    const topic: RevisionTopic = {
-      id: Date.now().toString(),
-      title: revTopicTitle.trim(),
-      subject: resolvedSubject,
-      createdAt: new Date().toISOString(),
-    };
-    setRevisionTopics((prev) => [topic, ...prev]);
+
+    if (editingTopic) {
+      setRevisionTopics((prev) =>
+        prev.map((t) =>
+          t.id === editingTopic.id
+            ? { ...t, title: revTopicTitle.trim(), subject: resolvedSubject }
+            : t
+        )
+      );
+      setEditingTopic(null);
+    } else {
+      const topic: RevisionTopic = {
+        id: Date.now().toString(),
+        title: revTopicTitle.trim(),
+        subject: resolvedSubject,
+        createdAt: new Date().toISOString(),
+      };
+      setRevisionTopics((prev) => [topic, ...prev]);
+    }
     setRevTopicTitle('');
     setRevTopicSubject('');
     setRevTopicCustomSubject('');
