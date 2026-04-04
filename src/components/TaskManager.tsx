@@ -163,7 +163,6 @@ const TaskManager = () => {
       category,
     };
     setTasks((prev) => [task, ...prev]);
-    scheduleRevisions(task);
     resetForm();
   };
 
