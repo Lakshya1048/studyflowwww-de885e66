@@ -198,9 +198,6 @@ const TaskManager = () => {
     setRevisions((prev) => prev.filter((r) => r.taskId !== id));
   }, [setTasks, setRevisions]);
 
-  const toggleRevision = useCallback((id: string) => {
-    setRevisions((prev) => prev.map((r) => (r.id === id ? { ...r, completed: !r.completed } : r)));
-  }, [setRevisions]);
 
   const toggleReviseFlag = useCallback((id: string) => {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, needsRevision: !t.needsRevision } : t)));
