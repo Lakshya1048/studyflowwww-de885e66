@@ -564,9 +564,18 @@ const TaskManager = () => {
 
         {/* Revision Tab */}
         <TabsContent value="revision" className="space-y-4 mt-3">
-          {/* Add standalone revision topic */}
+          {/* Add/Edit standalone revision topic */}
           <div className="p-3 rounded-xl bg-card border border-border space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Add Revision Topic</p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {editingTopic ? 'Edit Revision Topic' : 'Add Revision Topic'}
+              </p>
+              {editingTopic && (
+                <button onClick={cancelEditTopic} className="text-muted-foreground hover:text-foreground">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
             <div className="flex gap-2">
               <Input
                 placeholder="Topic name..."
@@ -586,7 +595,7 @@ const TaskManager = () => {
                 </SelectContent>
               </Select>
               <Button size="sm" onClick={addRevisionTopic} className="h-9 px-3">
-                <Plus className="w-4 h-4" />
+                {editingTopic ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
               </Button>
             </div>
             {revTopicSubject === 'Other' && (
@@ -645,7 +654,9 @@ const TaskManager = () => {
                   key={topic.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border shadow-sm group"
+                  className={`flex items-center gap-3 p-3.5 rounded-xl bg-card border shadow-sm group ${
+                    editingTopic?.id === topic.id ? 'border-primary' : 'border-border'
+                  }`}
                 >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{topic.title}</p>
@@ -653,74 +664,26 @@ const TaskManager = () => {
                       {topic.subject}
                     </span>
                   </div>
-                  <button
-                    onClick={() => deleteRevisionTopic(topic.id)}
-                    className="text-muted-foreground hover:text-destructive transition-all opacity-0 group-hover:opacity-100 active:scale-90"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </motion.div>
-              ))}
-            </div>
-          )}
-
-          {/* Auto-scheduled revisions */}
-          {todayRevisions.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Auto-Scheduled ({todayRevisions.length})
-              </p>
-              {todayRevisions.map((rev) => (
-                <motion.div
-                  key={rev.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border shadow-sm"
-                >
-                  <button
-                    onClick={() => toggleRevision(rev.id)}
-                    className="w-5 h-5 rounded-md border-2 border-primary/50 hover:border-primary flex-shrink-0 transition-colors active:scale-90"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{rev.taskTitle}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${getSubjectStyle(rev.subject)}`}>
-                        {rev.subject}
-                      </span>
-                      <span className="text-[11px] text-muted-foreground">
-                        from {formatDate(rev.originalDate)}
-                      </span>
-                    </div>
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button
+                      onClick={() => startEditTopic(topic)}
+                      className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => deleteRevisionTopic(topic.id)}
+                      className="p-1.5 text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                  <span className="text-xs px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-medium flex-shrink-0">
-                    <RotateCcw className="w-3 h-3 inline mr-1" />
-                    Revise
-                  </span>
                 </motion.div>
               ))}
             </div>
           )}
 
-          {completedRevisions.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Completed ({completedRevisions.length})
-              </p>
-              {completedRevisions.slice(0, 10).map((rev) => (
-                <div key={rev.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
-                  <button
-                    onClick={() => toggleRevision(rev.id)}
-                    className="w-5 h-5 rounded-md bg-primary border-2 border-primary flex items-center justify-center flex-shrink-0"
-                  >
-                    <Check className="w-3 h-3 text-primary-foreground" />
-                  </button>
-                  <p className="text-sm text-muted-foreground line-through truncate">{rev.taskTitle}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {todayRevisions.length === 0 && completedRevisions.length === 0 && manualReviseTasks.length === 0 && revisionTopics.length === 0 && (
+          {manualReviseTasks.length === 0 && revisionTopics.length === 0 && (
             <div className="text-center py-10 text-muted-foreground">
               <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
                 <BookOpen className="w-7 h-7 text-primary" />
