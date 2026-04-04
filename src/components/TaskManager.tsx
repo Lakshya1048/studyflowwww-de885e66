@@ -141,24 +141,8 @@ const TaskManager = () => {
     });
   }, []);
 
-  const scheduleRevisions = useCallback((task: StudyTask) => {
-    const base = new Date(task.dueDate + 'T00:00:00');
-    const offsets = [1, 3, 7];
-    const newRevisions: RevisionItem[] = offsets.map((offset) => {
-      const d = new Date(base);
-      d.setDate(d.getDate() + offset);
-      return {
-        id: `${task.id}-rev-${offset}`,
-        taskId: task.id,
-        taskTitle: task.title,
-        subject: task.subject,
-        originalDate: task.dueDate,
-        revisionDate: getLocalDateStr(d),
-        completed: false,
-      };
-    });
-    setRevisions((prev) => [...newRevisions, ...prev]);
-  }, [setRevisions]);
+  // Revision topic editing
+  const [editingTopic, setEditingTopic] = useState<RevisionTopic | null>(null);
 
   const getResolvedSubject = () => {
     if (subject === 'Other') return customSubject.trim() || 'General';
