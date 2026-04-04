@@ -10,6 +10,7 @@ import type { StudyTask, TaskCategory } from '@/lib/types';
 import { TASK_CATEGORIES } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
+// RevisionItem type kept for backward compat but no longer auto-created
 interface RevisionItem {
   id: string;
   taskId: string;
