@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Clock, CheckCircle2, Target, Flame } from 'lucide-react';
+import { TrendingUp, Clock, Trophy, Target, Flame } from 'lucide-react';
 import type { StudySession, StudyTask } from '@/lib/types';
 import { getLocalDateStr } from '@/lib/utils';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -37,6 +37,16 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
     const weekMinutes = weekSessions.reduce((a, s) => a + s.duration, 0);
     const completedTasks = tasks.filter((t) => t.completed).length;
 
+    // Most studied day across all sessions
+    const dayTotals: Record<string, number> = {};
+    sessions.forEach((s) => {
+      dayTotals[s.date] = (dayTotals[s.date] || 0) + s.duration;
+    });
+    let bestDay: { date: string; minutes: number } | null = null;
+    Object.entries(dayTotals).forEach(([date, minutes]) => {
+      if (!bestDay || minutes > bestDay.minutes) bestDay = { date, minutes };
+    });
+
     const subjectMap: Record<string, number> = {};
     weekSessions.forEach((s) => {
       subjectMap[s.subject] = (subjectMap[s.subject] || 0) + s.duration;
@@ -57,14 +67,23 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
     }
     const maxMinutes = Math.max(...days.map((d) => d.minutes), 1);
 
-    return { totalMinutes, todayMinutes, weekMinutes, completedTasks, subjects, days, maxMinutes };
+    return { totalMinutes, todayMinutes, weekMinutes, completedTasks, subjects, days, maxMinutes, bestDay };
   }, [sessions, tasks]);
+
+  const bestDayLabel = stats.bestDay
+    ? new Date(stats.bestDay.date + 'T00:00:00').toLocaleDateString('en', { day: 'numeric', month: 'short' })
+    : '—';
+  const bestDayValue = stats.bestDay
+    ? (stats.bestDay.minutes >= 60
+        ? `${Math.floor(stats.bestDay.minutes / 60)}h${stats.bestDay.minutes % 60 ? ' ' + Math.round(stats.bestDay.minutes % 60) + 'm' : ''}`
+        : `${Math.round(stats.bestDay.minutes)}m`)
+    : '0m';
 
   const statCards = [
     { label: 'Today', value: `${Math.round(stats.todayMinutes)}m`, icon: Clock, color: 'text-primary' },
     { label: 'This Week', value: `${Math.floor(stats.weekMinutes / 60)}h ${Math.round(stats.weekMinutes % 60)}m`, icon: TrendingUp, color: 'text-accent' },
     { label: 'Total Hours', value: `${Math.floor(stats.totalMinutes / 60)}h`, icon: Target, color: 'text-primary' },
-    { label: 'Tasks Done', value: stats.completedTasks.toString(), icon: CheckCircle2, color: 'text-success' },
+    { label: `Best Day · ${bestDayLabel}`, value: bestDayValue, icon: Trophy, color: 'text-streak' },
   ];
 
   return (
