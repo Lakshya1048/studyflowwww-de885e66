@@ -64,6 +64,10 @@ const FocusTimer = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [customMinutes, setCustomMinutes] = useState('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showLogPast, setShowLogPast] = useState(false);
+  const [logMinutes, setLogMinutes] = useState('');
+  const [logSubject, setLogSubject] = useState('');
+  const [logDate, setLogDate] = useState(getLocalDateStr());
 
   const [endTime, setEndTime] = useLocalStorage<number | null>('studyflow-timer-end', null);
   const [timerMode, setTimerMode] = useLocalStorage<'focus' | 'break'>('studyflow-timer-mode', 'focus');
