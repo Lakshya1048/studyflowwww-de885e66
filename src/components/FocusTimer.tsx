@@ -560,6 +560,51 @@ const FocusTimer = () => {
           <p className="text-xs text-muted-foreground">Minutes Studied</p>
         </div>
       </div>
+
+      {/* Log past session */}
+      <div className="p-4 rounded-lg bg-card border border-border card-shadow space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Log Past Session</h3>
+            <p className="text-xs text-muted-foreground">Studied earlier? Add it here.</p>
+          </div>
+          <Button size="sm" variant={showLogPast ? 'secondary' : 'outline'} onClick={() => setShowLogPast((v) => !v)}>
+            {showLogPast ? 'Cancel' : '+ Add'}
+          </Button>
+        </div>
+
+        {showLogPast && (
+          <div className="space-y-2 pt-2 border-t border-border">
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                min="1"
+                max="1440"
+                value={logMinutes}
+                onChange={(e) => setLogMinutes(e.target.value)}
+                placeholder="Minutes (e.g. 60)"
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+              <input
+                type="date"
+                value={logDate}
+                max={getLocalDateStr()}
+                onChange={(e) => setLogDate(e.target.value)}
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </div>
+            <input
+              value={logSubject}
+              onChange={(e) => setLogSubject(e.target.value)}
+              placeholder="Subject (e.g. Physics)"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+            <Button size="sm" onClick={logPastSession} className="w-full" disabled={!logMinutes || parseFloat(logMinutes) <= 0}>
+              Save Session
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
