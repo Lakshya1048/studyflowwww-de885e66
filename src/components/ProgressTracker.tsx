@@ -71,7 +71,7 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
   }, [sessions, tasks]);
 
   const bestDayLabel = stats.bestDay
-    ? new Date(stats.bestDay.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    ? new Date(stats.bestDay.date + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' })
     : '—';
   const bestDayValue = stats.bestDay
     ? (stats.bestDay.minutes >= 60
