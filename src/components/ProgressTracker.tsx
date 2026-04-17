@@ -123,18 +123,23 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
       <div className="p-4 rounded-lg bg-card border border-border card-shadow">
         <h3 className="font-display text-sm font-semibold text-foreground mb-4">This Week</h3>
         <div className="flex items-end gap-2 h-32">
-          {stats.days.map((day, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <motion.div
-                className="w-full rounded-t-md gradient-primary"
-                initial={{ height: 0 }}
-                animate={{ height: `${(day.minutes / stats.maxMinutes) * 100}%` }}
-                transition={{ delay: i * 0.05, duration: 0.4 }}
-                style={{ minHeight: day.minutes > 0 ? 4 : 0 }}
-              />
-              <span className="text-[10px] text-muted-foreground">{day.label}</span>
-            </div>
-          ))}
+          {stats.days.map((day, i) => {
+            const pct = (day.minutes / stats.maxMinutes) * 100;
+            return (
+              <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                <span className="text-[10px] text-muted-foreground font-medium">
+                  {day.minutes > 0 ? (day.minutes >= 60 ? `${Math.floor(day.minutes / 60)}h${day.minutes % 60 ? Math.round(day.minutes % 60) + 'm' : ''}` : `${Math.round(day.minutes)}m`) : ''}
+                </span>
+                <motion.div
+                  className="w-full rounded-t-md gradient-primary"
+                  initial={{ height: 0 }}
+                  animate={{ height: day.minutes > 0 ? `${Math.max(pct, 4)}%` : '0%' }}
+                  transition={{ delay: i * 0.05, duration: 0.4 }}
+                />
+                <span className="text-[10px] text-muted-foreground">{day.label}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
