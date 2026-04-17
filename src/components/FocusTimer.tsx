@@ -574,10 +574,12 @@ const FocusTimer = () => {
         </div>
 
         {showLogPast && (() => {
+          const DEFAULT_SUBJECTS = ['English', 'Math', 'Physics', 'Chemistry', 'AI', 'IP', 'Other'];
           const knownSubjects = Array.from(new Set([
+            ...DEFAULT_SUBJECTS,
             ...sessions.map((s) => s.subject),
             ...tasks.map((t) => t.subject),
-          ].filter(Boolean))).sort();
+          ].filter(Boolean)));
           const useCustom = logSubject === '__custom__' || (!!logSubject && !knownSubjects.includes(logSubject) && logSubject !== '');
           const selectValue = knownSubjects.includes(logSubject) ? logSubject : (logSubject ? '__custom__' : '');
           return (
