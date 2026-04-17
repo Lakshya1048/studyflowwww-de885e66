@@ -288,6 +288,23 @@ const FocusTimer = () => {
     setIsFullscreen((v) => !v);
   };
 
+  const logPastSession = () => {
+    const mins = parseFloat(logMinutes);
+    if (!mins || mins <= 0 || mins > 1440) return;
+    const rounded = Math.round(mins * 10) / 10;
+    const session: StudySession = {
+      id: Date.now().toString(),
+      date: logDate,
+      duration: rounded,
+      subject: logSubject.trim() || 'General',
+    };
+    setSessions((prev) => [session, ...prev]);
+    setLogMinutes('');
+    setLogSubject('');
+    setLogDate(getLocalDateStr());
+    setShowLogPast(false);
+  };
+
   const todaySessions = sessions.filter((s) => s.date === today);
   const todayMinutes = todaySessions.reduce((acc, s) => acc + s.duration, 0);
   const selectedTask = selectedTaskId ? tasks.find((t) => t.id === selectedTaskId) : null;
