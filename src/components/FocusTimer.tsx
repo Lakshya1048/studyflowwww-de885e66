@@ -561,11 +561,11 @@ const FocusTimer = () => {
         </div>
       </div>
 
-      {/* Log past session */}
+      {/* Add past session */}
       <div className="p-4 rounded-lg bg-card border border-border card-shadow space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Log Past Session</h3>
+            <h3 className="text-sm font-semibold text-foreground">Add Past Session</h3>
             <p className="text-xs text-muted-foreground">Studied earlier? Add it here.</p>
           </div>
           <Button size="sm" variant={showLogPast ? 'secondary' : 'outline'} onClick={() => setShowLogPast((v) => !v)}>
@@ -573,37 +573,64 @@ const FocusTimer = () => {
           </Button>
         </div>
 
-        {showLogPast && (
-          <div className="space-y-2 pt-2 border-t border-border">
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                type="number"
-                min="1"
-                max="1440"
-                value={logMinutes}
-                onChange={(e) => setLogMinutes(e.target.value)}
-                placeholder="Minutes (e.g. 60)"
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-              <input
-                type="date"
-                value={logDate}
-                max={getLocalDateStr()}
-                onChange={(e) => setLogDate(e.target.value)}
-                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
+        {showLogPast && (() => {
+          const knownSubjects = Array.from(new Set([
+            ...sessions.map((s) => s.subject),
+            ...tasks.map((t) => t.subject),
+          ].filter(Boolean))).sort();
+          const useCustom = logSubject === '__custom__' || (!!logSubject && !knownSubjects.includes(logSubject) && logSubject !== '');
+          const selectValue = knownSubjects.includes(logSubject) ? logSubject : (logSubject ? '__custom__' : '');
+          return (
+            <div className="space-y-2 pt-2 border-t border-border">
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="number"
+                  min="1"
+                  max="1440"
+                  value={logMinutes}
+                  onChange={(e) => setLogMinutes(e.target.value)}
+                  placeholder="Minutes (e.g. 60)"
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+                <input
+                  type="date"
+                  value={logDate}
+                  max={getLocalDateStr()}
+                  onChange={(e) => setLogDate(e.target.value)}
+                  className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <select
+                value={selectValue}
+                onChange={(e) => setLogSubject(e.target.value)}
+                className="w-full rounded-md border border-input bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="">— Pick a subject —</option>
+                {knownSubjects.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+                <option value="__custom__">+ Custom subject…</option>
+              </select>
+              {useCustom && (
+                <input
+                  autoFocus
+                  value={logSubject === '__custom__' ? '' : logSubject}
+                  onChange={(e) => setLogSubject(e.target.value)}
+                  placeholder="Type subject name"
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              )}
+              <Button
+                size="sm"
+                onClick={logPastSession}
+                className="w-full"
+                disabled={!logMinutes || parseFloat(logMinutes) <= 0 || !logSubject || logSubject === '__custom__'}
+              >
+                Add Session
+              </Button>
             </div>
-            <input
-              value={logSubject}
-              onChange={(e) => setLogSubject(e.target.value)}
-              placeholder="Subject (e.g. Physics)"
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            />
-            <Button size="sm" onClick={logPastSession} className="w-full" disabled={!logMinutes || parseFloat(logMinutes) <= 0}>
-              Save Session
-            </Button>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
