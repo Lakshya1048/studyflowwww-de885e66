@@ -178,7 +178,7 @@ const DetailedStats = () => {
             <h3 className="font-display text-sm font-semibold text-foreground mb-2">Best Day in {rangeLabel}</h3>
             <div className="flex items-baseline justify-between">
               <span className="text-foreground font-medium">{formatDate(stats.bestDay.date)}</span>
-              <span className="text-2xl font-display font-bold gradient-primary bg-clip-text text-transparent">
+              <span className="text-2xl font-display font-bold text-primary">
                 {formatMinutes(stats.bestDay.minutes)}
               </span>
             </div>
