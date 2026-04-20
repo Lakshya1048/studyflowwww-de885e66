@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, Clock, Trophy, Target, Flame } from 'lucide-react';
+import { TrendingUp, Clock, Trophy, Target, Flame, BarChart3, ChevronRight } from 'lucide-react';
 import type { StudySession, StudyTask } from '@/lib/types';
 import { getLocalDateStr } from '@/lib/utils';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
@@ -15,6 +16,7 @@ interface ProgressTrackerProps {
 }
 
 const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) => {
+  const navigate = useNavigate();
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
 
@@ -89,6 +91,23 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
   return (
     <div className="space-y-6">
       <h2 className="font-display text-xl font-bold text-foreground">Progress</h2>
+
+      {/* View detailed stats CTA */}
+      <button
+        onClick={() => navigate('/stats')}
+        className="w-full p-4 rounded-xl bg-card border border-border card-shadow flex items-center justify-between hover:bg-muted/40 transition-colors active:scale-[0.99]"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
+            <BarChart3 className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold text-foreground">Detailed Stats</p>
+            <p className="text-xs text-muted-foreground">7d · 21d · 30d · 365d · all time</p>
+          </div>
+        </div>
+        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+      </button>
 
       {/* Current Rank */}
       <motion.div
