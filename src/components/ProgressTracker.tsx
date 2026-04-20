@@ -103,7 +103,7 @@ const ProgressTracker = ({ achievements, rank, streak }: ProgressTrackerProps) =
           </div>
           <div className="text-left">
             <p className="text-sm font-semibold text-foreground">Detailed Stats</p>
-            <p className="text-xs text-muted-foreground">7d · 21d · 30d · 365d · all time</p>
+            <p className="text-xs text-muted-foreground">View full breakdown by time range</p>
           </div>
         </div>
         <ChevronRight className="w-5 h-5 text-muted-foreground" />
