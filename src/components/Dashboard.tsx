@@ -18,6 +18,7 @@ interface DashboardProps {
     streak: number;
     progressPercent: number;
     achievements: Achievement[];
+    freezeAvailable?: boolean;
   };
 }
 
@@ -96,7 +97,7 @@ const Dashboard = ({ onNavigate, profile, gamification }: DashboardProps) => {
       </motion.div>
 
       {/* Rank Card */}
-      <GamificationCard rank={gamification.rank} nextRank={gamification.nextRank} streak={gamification.streak} progressPercent={gamification.progressPercent} />
+      <GamificationCard rank={gamification.rank} nextRank={gamification.nextRank} streak={gamification.streak} progressPercent={gamification.progressPercent} freezeAvailable={gamification.freezeAvailable} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {quickCards.map((card, i) => (

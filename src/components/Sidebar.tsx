@@ -17,6 +17,7 @@ interface SidebarProps {
     nextRank: RankInfo | null;
     streak: number;
     progressPercent: number;
+    freezeAvailable?: boolean;
   };
 }
 
@@ -58,7 +59,7 @@ const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile, gami
       {/* Rank card */}
       {!collapsed && (
         <div className="mt-3">
-          <GamificationCard compact rank={gamification.rank} nextRank={gamification.nextRank} streak={gamification.streak} progressPercent={gamification.progressPercent} />
+          <GamificationCard compact rank={gamification.rank} nextRank={gamification.nextRank} streak={gamification.streak} progressPercent={gamification.progressPercent} freezeAvailable={gamification.freezeAvailable} />
         </div>
       )}
 
