@@ -18,6 +18,7 @@ interface DashboardProps {
     streak: number;
     progressPercent: number;
     achievements: Achievement[];
+    freezeAvailable?: boolean;
   };
 }
 
