@@ -69,40 +69,67 @@ export function useGamification() {
   const [unlockedBadges, setUnlockedBadges] = useLocalStorage<Record<string, string>>('studyflow-badges', {});
   const [newBadge, setNewBadge] = useLocalStorage<Achievement | null>('studyflow-new-badge', null);
   const [lastRankName, setLastRankName] = useLocalStorage<string>('studyflow-last-rank', 'Rookie');
+  const [freezeState, setFreezeState] = useLocalStorage<FreezeState>('studyflow-freeze', DEFAULT_FREEZE_STATE);
 
   const badgesRef = useRef(unlockedBadges);
   badgesRef.current = unlockedBadges;
 
   const sessionCount = sessions.length;
 
-  const streak = useMemo(() => {
-    // Build a map of date -> total minutes from sessions
+  // Refresh freeze card every new week
+  useEffect(() => {
+    const refreshed = refreshWeeklyFreeze(freezeState);
+    if (refreshed !== freezeState) setFreezeState(refreshed);
+  }, [freezeState, setFreezeState]);
+
+  const { streak, freezeJustUsedDate } = useMemo(() => {
     const minutesByDate: Record<string, number> = {};
     sessions.forEach((s) => {
       minutesByDate[s.date] = (minutesByDate[s.date] || 0) + s.duration;
     });
 
-    // Merge session dates and task-completion active days, but only count days with >= 60 mins of study
-    // Active days from task completions still count (they represent meaningful activity)
     const qualifyingDates = new Set<string>();
     Object.entries(minutesByDate).forEach(([date, mins]) => {
       if (mins >= 60) qualifyingDates.add(date);
     });
-    const allDates = [...qualifyingDates].sort().reverse();
-    let currentStreak = 0;
+
     const today = new Date();
     const todayStr = getLocalDateStr(today);
-    const activeToday = allDates.includes(todayStr);
+    const activeToday = qualifyingDates.has(todayStr);
+    let currentStreak = 0;
+    let justUsed: string | null = null;
+    let freezeBudget = freezeState.available ? 1 : 0;
+    const protectedDays = new Set(Object.keys(freezeState.usedOn));
+
     const startOffset = activeToday ? 0 : 1;
     for (let i = startOffset; ; i++) {
       const checkDate = new Date(today);
       checkDate.setDate(checkDate.getDate() - i);
       const checkStr = getLocalDateStr(checkDate);
-      if (allDates.includes(checkStr)) currentStreak++;
-      else break;
+      if (qualifyingDates.has(checkStr) || protectedDays.has(checkStr)) {
+        currentStreak++;
+      } else if (freezeBudget > 0) {
+        freezeBudget--;
+        currentStreak++;
+        justUsed = checkStr;
+        protectedDays.add(checkStr);
+      } else {
+        break;
+      }
     }
-    return currentStreak;
-  }, [sessions]);
+    return { streak: currentStreak, freezeJustUsedDate: justUsed };
+  }, [sessions, freezeState]);
+
+  // Persist freeze consumption
+  useEffect(() => {
+    if (!freezeJustUsedDate || !freezeState.available) return;
+    if (freezeState.usedOn[freezeJustUsedDate]) return;
+    setFreezeState({
+      ...freezeState,
+      available: false,
+      usedOn: { ...freezeState.usedOn, [freezeJustUsedDate]: freezeState.weekStart },
+    });
+  }, [freezeJustUsedDate, freezeState, setFreezeState]);
 
   const totalMinutes = useMemo(() => sessions.reduce((a, s) => a + s.duration, 0), [sessions]);
   const completedTasks = useMemo(() => tasks.filter(t => t.completed).length, [tasks]);
