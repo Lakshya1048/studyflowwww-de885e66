@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Flame } from 'lucide-react';
+import { Flame, Snowflake } from 'lucide-react';
 import type { RankInfo } from '@/hooks/useGamification';
 
 interface GamificationCardProps {
@@ -8,9 +8,10 @@ interface GamificationCardProps {
   streak: number;
   progressPercent: number;
   compact?: boolean;
+  freezeAvailable?: boolean;
 }
 
-const GamificationCard = ({ rank, nextRank, streak, progressPercent, compact }: GamificationCardProps) => {
+const GamificationCard = ({ rank, nextRank, streak, progressPercent, compact, freezeAvailable }: GamificationCardProps) => {
   if (compact) {
     return (
       <div className="mx-3 mb-2 rounded-lg bg-sidebar-accent p-3 space-y-2">
@@ -19,9 +20,16 @@ const GamificationCard = ({ rank, nextRank, streak, progressPercent, compact }: 
             <span className="text-base">{rank.icon}</span>
             <span className="text-xs font-bold text-sidebar-foreground">{rank.name}</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <Flame className="w-4 h-4 text-streak" />
-            <span className="text-xs font-bold text-sidebar-foreground">{streak}d</span>
+          <div className="flex items-center gap-2">
+            {freezeAvailable && (
+              <span title="Streak Freeze available this week" className="flex items-center">
+                <Snowflake className="w-3.5 h-3.5 text-primary" />
+              </span>
+            )}
+            <div className="flex items-center gap-1">
+              <Flame className="w-4 h-4 text-streak" />
+              <span className="text-xs font-bold text-sidebar-foreground">{streak}d</span>
+            </div>
           </div>
         </div>
         {nextRank && (
@@ -63,10 +71,23 @@ const GamificationCard = ({ rank, nextRank, streak, progressPercent, compact }: 
             <p className="text-xs text-muted-foreground">Current Rank</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent/10">
-          <Flame className="w-4 h-4 text-streak" />
-          <span className="text-sm font-bold text-foreground">{streak}</span>
-          <span className="text-xs text-muted-foreground">day streak</span>
+        <div className="flex items-center gap-2">
+          <div
+            title={freezeAvailable ? 'Streak Freeze ready — protects 1 missed day this week' : 'Streak Freeze used — refreshes Monday'}
+            className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border ${
+              freezeAvailable
+                ? 'bg-primary/10 border-primary/30 text-primary'
+                : 'bg-muted/50 border-border text-muted-foreground opacity-60'
+            }`}
+          >
+            <Snowflake className="w-3.5 h-3.5" />
+            <span className="text-xs font-bold">{freezeAvailable ? 1 : 0}</span>
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-accent/10">
+            <Flame className="w-4 h-4 text-streak" />
+            <span className="text-sm font-bold text-foreground">{streak}</span>
+            <span className="text-xs text-muted-foreground">day</span>
+          </div>
         </div>
       </div>
 
@@ -91,6 +112,13 @@ const GamificationCard = ({ rank, nextRank, streak, progressPercent, compact }: 
       ) : (
         <p className="text-sm text-center text-muted-foreground font-medium">🔥 Max rank achieved — you're a Legend!</p>
       )}
+
+      <p className="mt-3 text-[11px] text-muted-foreground flex items-center gap-1.5">
+        <Snowflake className="w-3 h-3" />
+        {freezeAvailable
+          ? 'Freeze card ready — auto-protects 1 missed day this week.'
+          : 'Freeze used. New card every Monday.'}
+      </p>
     </motion.div>
   );
 };
