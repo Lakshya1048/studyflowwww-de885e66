@@ -17,6 +17,7 @@ interface SidebarProps {
     nextRank: RankInfo | null;
     streak: number;
     progressPercent: number;
+    freezeAvailable?: boolean;
   };
 }
 
