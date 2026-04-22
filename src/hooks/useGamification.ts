@@ -229,5 +229,7 @@ export function useGamification() {
     dismissNewBadge,
     totalMinutes,
     completedTasks,
+    freezeAvailable: freezeState.available,
+    freezeUsedOn: freezeState.usedOn,
   };
 }
