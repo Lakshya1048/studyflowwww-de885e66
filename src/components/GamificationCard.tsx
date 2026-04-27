@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Flame, Snowflake } from 'lucide-react';
+import { toast } from 'sonner';
 import type { RankInfo } from '@/hooks/useGamification';
 
 interface GamificationCardProps {
@@ -9,9 +10,30 @@ interface GamificationCardProps {
   progressPercent: number;
   compact?: boolean;
   freezeAvailable?: boolean;
+  canUseFreeze?: boolean;
+  useFreezeForYesterday?: () => boolean;
 }
 
-const GamificationCard = ({ rank, nextRank, streak, progressPercent, compact, freezeAvailable }: GamificationCardProps) => {
+const GamificationCard = ({
+  rank,
+  nextRank,
+  streak,
+  progressPercent,
+  compact,
+  freezeAvailable,
+  canUseFreeze,
+  useFreezeForYesterday,
+}: GamificationCardProps) => {
+  const handleUseFreeze = () => {
+    if (!useFreezeForYesterday) return;
+    const ok = useFreezeForYesterday();
+    if (ok) {
+      toast.success('Streak Freeze used — yesterday protected ❄️');
+    } else {
+      toast.error("Can't use Streak Freeze right now");
+    }
+  };
+
   if (compact) {
     return (
       <div className="mx-3 mb-2 rounded-lg bg-sidebar-accent p-3 space-y-2">
@@ -73,7 +95,11 @@ const GamificationCard = ({ rank, nextRank, streak, progressPercent, compact, fr
         </div>
         <div className="flex items-center gap-2">
           <div
-            title={freezeAvailable ? 'Streak Freeze ready — protects 1 missed day this week' : 'Streak Freeze used — refreshes Monday'}
+            title={
+              freezeAvailable
+                ? 'Streak Freeze ready — tap to protect yesterday if you missed it'
+                : 'Streak Freeze used — refreshes Monday'
+            }
             className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full border ${
               freezeAvailable
                 ? 'bg-primary/10 border-primary/30 text-primary'
@@ -113,11 +139,22 @@ const GamificationCard = ({ rank, nextRank, streak, progressPercent, compact, fr
         <p className="text-sm text-center text-muted-foreground font-medium">🔥 Max rank achieved — you're a Legend!</p>
       )}
 
+      {/* Manual freeze action */}
+      {canUseFreeze && (
+        <button
+          onClick={handleUseFreeze}
+          className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/15 transition-colors"
+        >
+          <Snowflake className="w-3.5 h-3.5" />
+          Use Streak Freeze to protect yesterday
+        </button>
+      )}
+
       <p className="mt-3 text-[11px] text-muted-foreground flex items-center gap-1.5">
         <Snowflake className="w-3 h-3" />
         {freezeAvailable
-          ? 'Freeze card ready — auto-protects 1 missed day this week.'
-          : 'Freeze used. New card every Monday.'}
+          ? 'Freeze card ready — tap "Use" if you missed yesterday. Resets Monday.'
+          : 'Freeze used. New card every Monday (no reroll).'}
       </p>
     </motion.div>
   );

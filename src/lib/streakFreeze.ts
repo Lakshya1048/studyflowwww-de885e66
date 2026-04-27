@@ -10,6 +10,13 @@ export function getWeekMondayStr(date: Date = new Date()): string {
   return getLocalDateStr(d);
 }
 
+/** Returns yesterday's local date string (YYYY-MM-DD). */
+export function getYesterdayStr(today: Date = new Date()): string {
+  const d = new Date(today);
+  d.setDate(d.getDate() - 1);
+  return getLocalDateStr(d);
+}
+
 export interface FreezeState {
   /** Monday of the week the current freeze card was granted for. */
   weekStart: string;
@@ -25,11 +32,17 @@ export const DEFAULT_FREEZE_STATE: FreezeState = {
   usedOn: {},
 };
 
-/** Refresh the freeze card if a new week has started. Pure — returns new state. */
+/**
+ * Refresh the freeze card if a new week has started.
+ * Grants exactly 1 freeze per new ISO week. No reroll within the same week.
+ * Pure — returns new state.
+ */
 export function refreshWeeklyFreeze(state: FreezeState, today: Date = new Date()): FreezeState {
   const currentWeek = getWeekMondayStr(today);
   if (state.weekStart !== currentWeek) {
+    // New week → grant a fresh card (always available, regardless of previous week).
     return { ...state, weekStart: currentWeek, available: true };
   }
+  // Same week → no reroll, keep current availability as-is.
   return state;
 }
