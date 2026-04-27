@@ -99,7 +99,7 @@ const Dashboard = ({ onNavigate, profile, gamification }: DashboardProps) => {
       </motion.div>
 
       {/* Rank Card */}
-      <GamificationCard rank={gamification.rank} nextRank={gamification.nextRank} streak={gamification.streak} progressPercent={gamification.progressPercent} freezeAvailable={gamification.freezeAvailable} />
+      <GamificationCard rank={gamification.rank} nextRank={gamification.nextRank} streak={gamification.streak} progressPercent={gamification.progressPercent} freezeAvailable={gamification.freezeAvailable} canUseFreeze={gamification.canUseFreeze} useFreezeForYesterday={gamification.useFreezeForYesterday} />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {quickCards.map((card, i) => (
