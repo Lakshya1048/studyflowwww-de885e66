@@ -19,6 +19,8 @@ interface DashboardProps {
     progressPercent: number;
     achievements: Achievement[];
     freezeAvailable?: boolean;
+    canUseFreeze?: boolean;
+    useFreezeForYesterday?: () => boolean;
   };
 }
 
