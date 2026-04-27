@@ -146,7 +146,7 @@ const GamificationCard = ({
           className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs font-semibold hover:bg-primary/15 transition-colors"
         >
           <Snowflake className="w-3.5 h-3.5" />
-          Use Streak Freeze to protect yesterday
+          Use Freeze Streak To Protect Your Streak
         </button>
       )}
 
