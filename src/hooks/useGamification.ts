@@ -82,25 +82,29 @@ export function useGamification() {
     if (refreshed !== freezeState) setFreezeState(refreshed);
   }, [freezeState, setFreezeState]);
 
-  const { streak, freezeJustUsedDate } = useMemo(() => {
-    const minutesByDate: Record<string, number> = {};
+  const minutesByDate = useMemo(() => {
+    const map: Record<string, number> = {};
     sessions.forEach((s) => {
-      minutesByDate[s.date] = (minutesByDate[s.date] || 0) + s.duration;
+      map[s.date] = (map[s.date] || 0) + s.duration;
     });
+    return map;
+  }, [sessions]);
 
-    const qualifyingDates = new Set<string>();
+  const qualifyingDates = useMemo(() => {
+    const set = new Set<string>();
     Object.entries(minutesByDate).forEach(([date, mins]) => {
-      if (mins >= 60) qualifyingDates.add(date);
+      if (mins >= 60) set.add(date);
     });
+    return set;
+  }, [minutesByDate]);
 
+  const streak = useMemo(() => {
     const today = new Date();
     const todayStr = getLocalDateStr(today);
     const activeToday = qualifyingDates.has(todayStr);
-    let currentStreak = 0;
-    let justUsed: string | null = null;
-    let freezeBudget = freezeState.available ? 1 : 0;
     const protectedDays = new Set(Object.keys(freezeState.usedOn));
 
+    let currentStreak = 0;
     const startOffset = activeToday ? 0 : 1;
     for (let i = startOffset; ; i++) {
       const checkDate = new Date(today);
@@ -108,28 +112,32 @@ export function useGamification() {
       const checkStr = getLocalDateStr(checkDate);
       if (qualifyingDates.has(checkStr) || protectedDays.has(checkStr)) {
         currentStreak++;
-      } else if (freezeBudget > 0) {
-        freezeBudget--;
-        currentStreak++;
-        justUsed = checkStr;
-        protectedDays.add(checkStr);
       } else {
         break;
       }
     }
-    return { streak: currentStreak, freezeJustUsedDate: justUsed };
-  }, [sessions, freezeState]);
+    return currentStreak;
+  }, [qualifyingDates, freezeState]);
 
-  // Persist freeze consumption
-  useEffect(() => {
-    if (!freezeJustUsedDate || !freezeState.available) return;
-    if (freezeState.usedOn[freezeJustUsedDate]) return;
+  // Yesterday-missed detection (for manual freeze opt-in eligibility)
+  const yesterdayStr = getYesterdayStr();
+  const yesterdayMissed =
+    !qualifyingDates.has(yesterdayStr) && !freezeState.usedOn[yesterdayStr];
+  const canUseFreeze = freezeState.available && yesterdayMissed;
+
+  /** Manually consume the weekly freeze card to protect yesterday. */
+  const useFreezeForYesterday = useCallback(() => {
+    if (!freezeState.available) return false;
+    if (freezeState.usedOn[yesterdayStr]) return false;
+    if (qualifyingDates.has(yesterdayStr)) return false;
     setFreezeState({
       ...freezeState,
       available: false,
-      usedOn: { ...freezeState.usedOn, [freezeJustUsedDate]: freezeState.weekStart },
+      usedOn: { ...freezeState.usedOn, [yesterdayStr]: freezeState.weekStart || getWeekMondayStr() },
     });
-  }, [freezeJustUsedDate, freezeState, setFreezeState]);
+    return true;
+  }, [freezeState, yesterdayStr, qualifyingDates, setFreezeState]);
+
 
   const totalMinutes = useMemo(() => sessions.reduce((a, s) => a + s.duration, 0), [sessions]);
   const completedTasks = useMemo(() => tasks.filter(t => t.completed).length, [tasks]);
