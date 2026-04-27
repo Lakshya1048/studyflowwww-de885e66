@@ -104,8 +104,26 @@ export function useGamification() {
     const activeToday = qualifyingDates.has(todayStr);
     const protectedDays = new Set(Object.keys(freezeState.usedOn));
 
+    // Determine the anchor day where the streak chain starts.
+    // Rule: the anchor must be a REAL qualifying day (protected days alone can't anchor).
+    // - If today qualifies → anchor = today.
+    // - Else if yesterday qualifies → anchor = yesterday (today is grace until midnight).
+    // - Otherwise streak is broken (0), even if older days are protected.
+    let startOffset: number;
+    if (activeToday) {
+      startOffset = 0;
+    } else {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yStr = getLocalDateStr(yesterday);
+      if (qualifyingDates.has(yStr)) {
+        startOffset = 1;
+      } else {
+        return 0;
+      }
+    }
+
     let currentStreak = 0;
-    const startOffset = activeToday ? 0 : 1;
     for (let i = startOffset; ; i++) {
       const checkDate = new Date(today);
       checkDate.setDate(checkDate.getDate() - i);
