@@ -239,5 +239,7 @@ export function useGamification() {
     completedTasks,
     freezeAvailable: freezeState.available,
     freezeUsedOn: freezeState.usedOn,
+    canUseFreeze,
+    useFreezeForYesterday,
   };
 }
