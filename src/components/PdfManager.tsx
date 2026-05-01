@@ -609,7 +609,7 @@ const PdfManager = () => {
                   <p className="text-sm">No matches for "{searchQuery}"</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <AnimatePresence>
                     {filteredFolders.map((folder) => (
                       <motion.div
@@ -623,7 +623,7 @@ const PdfManager = () => {
                         <div className="w-12 h-14 rounded-lg bg-accent/15 flex items-center justify-center mb-3">
                           <Folder className="w-6 h-6 text-accent" />
                         </div>
-                        <p className="text-xs font-medium text-foreground truncate w-full" title={folder}>
+                        <p className="text-sm font-medium text-foreground break-words w-full" title={folder}>
                           {folder}
                         </p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">folder</p>
@@ -661,7 +661,7 @@ const PdfManager = () => {
                         <div className="w-12 h-14 rounded-lg bg-destructive/10 flex items-center justify-center mb-3">
                           <FileText className="w-6 h-6 text-destructive" />
                         </div>
-                        <p className="text-xs font-medium text-foreground truncate w-full" title={pdf}>
+                        <p className="text-sm font-medium text-foreground break-words w-full" title={pdf}>
                           {pdf.replace(/\.pdf$/i, '')}
                         </p>
                         <p className="text-[10px] text-muted-foreground mt-0.5">.pdf</p>
