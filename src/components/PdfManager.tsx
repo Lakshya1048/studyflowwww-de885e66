@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FolderOpen, Upload, FileText, Trash2, Eye,
-  FolderPlus, ChevronRight, AlertCircle, Loader2, ExternalLink, Search, Folder, ArrowLeft
+  FolderPlus, ChevronRight, AlertCircle, Loader2, ExternalLink, Search, Folder, ArrowLeft,
+  Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +31,8 @@ const PdfManager = () => {
   const [loadingContents, setLoadingContents] = useState(false);
   const [viewingPdf, setViewingPdf] = useState<string | null>(null);
   const [viewPdfUrl, setViewPdfUrl] = useState<string | null>(null);
+  const [pdfFullscreen, setPdfFullscreen] = useState(false);
+  const [pdfZoom, setPdfZoom] = useState(100); // percent
   const [newSubjectName, setNewSubjectName] = useState('');
   const [showNewSubject, setShowNewSubject] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
@@ -289,6 +292,8 @@ const PdfManager = () => {
     if (viewPdfUrl) URL.revokeObjectURL(viewPdfUrl);
     setViewingPdf(null);
     setViewPdfUrl(null);
+    setPdfFullscreen(false);
+    setPdfZoom(100);
   };
 
   const pickFolder = async () => {
@@ -785,16 +790,59 @@ const PdfManager = () => {
 
       {/* ── PDF Viewer Modal ──────────────────────────────────── */}
       <Dialog open={!!viewingPdf} onOpenChange={(open) => !open && closeViewer()}>
-        <DialogContent className="sm:max-w-4xl h-[85vh] flex flex-col p-0 gap-0">
-          <DialogHeader className="px-5 py-3 border-b border-border shrink-0">
-            <DialogTitle className="text-sm truncate pr-8">{viewingPdf}</DialogTitle>
+        <DialogContent
+          className={
+            pdfFullscreen
+              ? 'max-w-none w-screen h-screen sm:rounded-none p-0 gap-0 flex flex-col border-0'
+              : 'sm:max-w-4xl h-[85vh] flex flex-col p-0 gap-0'
+          }
+        >
+          <DialogHeader className="px-5 py-2.5 border-b border-border shrink-0">
+            <div className="flex items-center gap-2 pr-8">
+              <DialogTitle className="text-sm truncate flex-1 min-w-0">{viewingPdf}</DialogTitle>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => setPdfZoom((z) => Math.max(25, z - 25))}
+                  className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title="Zoom out"
+                >
+                  <ZoomOut className="w-4 h-4" />
+                </button>
+                <span className="text-xs font-medium text-muted-foreground tabular-nums w-12 text-center">
+                  {pdfZoom}%
+                </span>
+                <button
+                  onClick={() => setPdfZoom((z) => Math.min(400, z + 25))}
+                  className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title="Zoom in"
+                >
+                  <ZoomIn className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setPdfZoom(100)}
+                  className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title="Reset zoom"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+                <div className="w-px h-5 bg-border mx-1" />
+                <button
+                  onClick={() => setPdfFullscreen((f) => !f)}
+                  className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  title={pdfFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                >
+                  {pdfFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
             <DialogDescription className="sr-only">PDF Viewer</DialogDescription>
           </DialogHeader>
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 bg-muted/20">
             {viewPdfUrl && (
               <iframe
-                src={viewPdfUrl}
-                className="w-full h-full border-0 rounded-b-lg"
+                key={`${viewPdfUrl}-${pdfZoom}`}
+                src={`${viewPdfUrl}#zoom=${pdfZoom}`}
+                className="w-full h-full border-0"
                 title={viewingPdf || 'PDF Viewer'}
               />
             )}
