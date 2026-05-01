@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FolderOpen, Upload, FileText, Trash2, Eye,
-  FolderPlus, ChevronRight, AlertCircle, Loader2, ExternalLink, Search
+  FolderPlus, ChevronRight, AlertCircle, Loader2, ExternalLink, Search, Folder, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,27 +16,36 @@ import { saveFolderHandle, loadFolderHandle } from '@/lib/folderDb';
 let _savedDirHandle: FileSystemDirectoryHandle | null = null;
 let _savedActiveSubject: string | null = null;
 let _savedSubjects: string[] = [];
-let _savedPdfs: string[] = [];
+let _savedPath: string[] = [];
 let _restoredFromIdb = false;
 
 const PdfManager = () => {
   const [subjects, _setSubjects] = useState<string[]>(_savedSubjects);
   const [activeSubject, _setActiveSubject] = useState<string | null>(_savedActiveSubject);
-  const [pdfs, _setPdfs] = useState<string[]>(_savedPdfs);
+  // path = nested folder names BELOW the active subject
+  const [path, _setPath] = useState<string[]>(_savedPath);
+  const [folders, setFolders] = useState<string[]>([]);
+  const [pdfs, setPdfs] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingPdfs, setLoadingPdfs] = useState(false);
+  const [loadingContents, setLoadingContents] = useState(false);
   const [viewingPdf, setViewingPdf] = useState<string | null>(null);
   const [viewPdfUrl, setViewPdfUrl] = useState<string | null>(null);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [showNewSubject, setShowNewSubject] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [showNewFolder, setShowNewFolder] = useState(false);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [restoring, setRestoring] = useState(!_restoredFromIdb && !_savedDirHandle);
 
+  // Move dialog state
+  const [movingPdf, setMovingPdf] = useState<string | null>(null);
+  const [moveTargets, setMoveTargets] = useState<{ subject: string; path: string[]; label: string }[]>([]);
+  const [loadingMoveTargets, setLoadingMoveTargets] = useState(false);
+
   const [browserSupported] = useState(() => 'showDirectoryPicker' in window);
 
-  // Wrap setters to also persist to module-level
   const setSubjects = useCallback((val: string[] | ((prev: string[]) => string[])) => {
     _setSubjects((prev) => {
       const next = typeof val === 'function' ? val(prev) : val;
@@ -45,18 +54,18 @@ const PdfManager = () => {
     });
   }, []);
 
-  const setPdfs = useCallback((val: string[] | ((prev: string[]) => string[])) => {
-    _setPdfs((prev) => {
-      const next = typeof val === 'function' ? val(prev) : val;
-      _savedPdfs = next;
-      return next;
-    });
-  }, []);
-
   const setActiveSubject = useCallback((val: string | null | ((prev: string | null) => string | null)) => {
     _setActiveSubject((prev) => {
       const next = typeof val === 'function' ? val(prev) : val;
       _savedActiveSubject = next;
+      return next;
+    });
+  }, []);
+
+  const setPath = useCallback((val: string[] | ((prev: string[]) => string[])) => {
+    _setPath((prev) => {
+      const next = typeof val === 'function' ? val(prev) : val;
+      _savedPath = next;
       return next;
     });
   }, []);
@@ -80,7 +89,6 @@ const PdfManager = () => {
       try {
         const handle = await loadFolderHandle();
         if (handle) {
-          // Verify permission
           const perm = await (handle as any).requestPermission({ mode: 'readwrite' });
           if (perm === 'granted') {
             setDirHandle(handle);
@@ -93,47 +101,78 @@ const PdfManager = () => {
     })();
   }, [setDirHandle]);
 
-  // Load subjects
+  // Resolve a directory handle by walking subject + path segments
+  const resolveDir = useCallback(async (
+    subject: string,
+    segs: string[],
+    create = false
+  ): Promise<FileSystemDirectoryHandle | null> => {
+    if (!dirHandle) return null;
+    try {
+      let cur = await dirHandle.getDirectoryHandle(subject, { create });
+      for (const seg of segs) {
+        cur = await cur.getDirectoryHandle(seg, { create });
+      }
+      return cur;
+    } catch {
+      return null;
+    }
+  }, [dirHandle]);
+
+  // Load subjects (top-level folders)
   const loadSubjects = useCallback(async () => {
     if (!dirHandle) return;
     setLoading(true);
     setError('');
     try {
-      const folders: string[] = [];
+      const list: string[] = [];
       for await (const entry of (dirHandle as any).values()) {
-        if (entry.kind === 'directory') folders.push(entry.name);
+        if (entry.kind === 'directory') list.push(entry.name);
       }
-      folders.sort((a, b) => a.localeCompare(b));
-      setSubjects(folders);
-      setActiveSubject((prev) => (prev ? prev : folders.length > 0 ? folders[0] : null));
+      list.sort((a, b) => a.localeCompare(b));
+      setSubjects(list);
+      setActiveSubject((prev) => (prev && list.includes(prev) ? prev : list.length > 0 ? list[0] : null));
     } catch {
       setError('Could not load subjects.');
     }
     setLoading(false);
-  }, [dirHandle]);
+  }, [dirHandle, setSubjects, setActiveSubject]);
 
-  // Load PDFs for active subject
-  const loadPdfs = useCallback(async () => {
-    if (!activeSubject || !dirHandle) { setPdfs([]); return; }
-    setLoadingPdfs(true);
-    try {
-      const subDir = await dirHandle.getDirectoryHandle(activeSubject);
-      const files: string[] = [];
-      for await (const entry of (subDir as any).values()) {
-        if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
-          files.push(entry.name);
-        }
-      }
-      files.sort((a, b) => a.localeCompare(b));
-      setPdfs(files);
-    } catch {
-      setError(`Could not load PDFs for ${activeSubject}.`);
+  // Load folders + pdfs at current location
+  const loadContents = useCallback(async () => {
+    if (!activeSubject || !dirHandle) {
+      setFolders([]); setPdfs([]);
+      return;
     }
-    setLoadingPdfs(false);
-  }, [activeSubject, dirHandle]);
+    setLoadingContents(true);
+    try {
+      const cur = await resolveDir(activeSubject, path);
+      if (!cur) { setFolders([]); setPdfs([]); setLoadingContents(false); return; }
+      const fs: string[] = [];
+      const ps: string[] = [];
+      for await (const entry of (cur as any).values()) {
+        if (entry.kind === 'directory') fs.push(entry.name);
+        else if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) ps.push(entry.name);
+      }
+      fs.sort((a, b) => a.localeCompare(b));
+      ps.sort((a, b) => a.localeCompare(b));
+      setFolders(fs);
+      setPdfs(ps);
+    } catch {
+      setError(`Could not load contents.`);
+    }
+    setLoadingContents(false);
+  }, [activeSubject, dirHandle, path, resolveDir]);
 
   useEffect(() => { loadSubjects(); }, [loadSubjects]);
-  useEffect(() => { loadPdfs(); }, [loadPdfs]);
+  useEffect(() => { loadContents(); }, [loadContents]);
+
+  // Reset path when switching subjects
+  const switchSubject = (sub: string) => {
+    setActiveSubject(sub);
+    setPath([]);
+    setSearchQuery('');
+  };
 
   // ── Actions ──────────────────────────────────────────────────────
   const createSubject = async () => {
@@ -145,18 +184,48 @@ const PdfManager = () => {
       setShowNewSubject(false);
       await loadSubjects();
       setActiveSubject(name);
+      setPath([]);
     } catch {
       setError(`Could not create subject "${name}".`);
     }
   };
 
+  const createFolder = async () => {
+    const name = newFolderName.trim();
+    if (!name || !activeSubject) return;
+    if (/[\\/]/.test(name)) { setError('Folder name cannot contain / or \\'); return; }
+    try {
+      const cur = await resolveDir(activeSubject, path, true);
+      if (!cur) throw new Error('no parent');
+      await cur.getDirectoryHandle(name, { create: true });
+      setNewFolderName('');
+      setShowNewFolder(false);
+      await loadContents();
+    } catch {
+      setError(`Could not create folder "${name}".`);
+    }
+  };
+
   const deleteSubject = async (name: string) => {
-    if (!confirm(`Delete "${name}" and all its PDFs?`)) return;
+    if (!confirm(`Delete "${name}" and all its contents?`)) return;
     if (!dirHandle) return;
     try {
       await (dirHandle as any).removeEntry(name, { recursive: true });
-      if (activeSubject === name) setActiveSubject(null);
+      if (activeSubject === name) { setActiveSubject(null); setPath([]); }
       await loadSubjects();
+    } catch {
+      setError(`Could not delete "${name}".`);
+    }
+  };
+
+  const deleteFolder = async (name: string) => {
+    if (!activeSubject) return;
+    if (!confirm(`Delete folder "${name}" and all its contents?`)) return;
+    try {
+      const cur = await resolveDir(activeSubject, path);
+      if (!cur) throw new Error('no parent');
+      await (cur as any).removeEntry(name, { recursive: true });
+      await loadContents();
     } catch {
       setError(`Could not delete "${name}".`);
     }
@@ -167,19 +236,20 @@ const PdfManager = () => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     try {
-      const subDir = await dirHandle.getDirectoryHandle(activeSubject, { create: true });
+      const cur = await resolveDir(activeSubject, path, true);
+      if (!cur) throw new Error('no parent');
       for (const file of Array.from(files)) {
-        const fh = await subDir.getFileHandle(file.name, { create: true });
+        const fh = await cur.getFileHandle(file.name, { create: true });
         const writable = await (fh as any).createWritable();
         await writable.write(file);
         await writable.close();
       }
-      await loadPdfs();
+      await loadContents();
     } catch (err: any) {
       setError(`Could not save PDF: ${err?.message || 'unknown error'}`);
     }
     if (fileInputRef.current) fileInputRef.current.value = '';
-  }, [activeSubject, dirHandle, loadPdfs]);
+  }, [activeSubject, dirHandle, path, resolveDir, loadContents]);
 
   const addPdf = async () => {
     if (!activeSubject || !dirHandle) return;
@@ -188,10 +258,11 @@ const PdfManager = () => {
   };
 
   const openPdf = async (fileName: string) => {
-    if (!activeSubject || !dirHandle) return;
+    if (!activeSubject) return;
     try {
-      const subDir = await dirHandle.getDirectoryHandle(activeSubject);
-      const fh = await subDir.getFileHandle(fileName);
+      const cur = await resolveDir(activeSubject, path);
+      if (!cur) throw new Error('no parent');
+      const fh = await cur.getFileHandle(fileName);
       const file = await fh.getFile();
       const url = URL.createObjectURL(file);
       setViewingPdf(fileName);
@@ -202,12 +273,13 @@ const PdfManager = () => {
   };
 
   const deletePdf = async (fileName: string) => {
-    if (!activeSubject || !dirHandle) return;
+    if (!activeSubject) return;
     if (!confirm(`Delete "${fileName}"?`)) return;
     try {
-      const subDir = await dirHandle.getDirectoryHandle(activeSubject);
-      await (subDir as any).removeEntry(fileName);
-      await loadPdfs();
+      const cur = await resolveDir(activeSubject, path);
+      if (!cur) throw new Error('no parent');
+      await (cur as any).removeEntry(fileName);
+      await loadContents();
     } catch {
       setError(`Could not delete ${fileName}.`);
     }
@@ -223,6 +295,7 @@ const PdfManager = () => {
     try {
       const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
       setDirHandle(handle);
+      setPath([]);
       setError('');
     } catch (e: any) {
       if (e.name === 'AbortError') return;
@@ -234,8 +307,68 @@ const PdfManager = () => {
     }
   };
 
+  // ── Move PDF ─────────────────────────────────────────────────
+  const openMoveDialog = async (fileName: string) => {
+    if (!dirHandle) return;
+    setMovingPdf(fileName);
+    setLoadingMoveTargets(true);
+    try {
+      const targets: { subject: string; path: string[]; label: string }[] = [];
+      const walk = async (dir: FileSystemDirectoryHandle, subject: string, segs: string[]) => {
+        const label = segs.length === 0 ? subject : `${subject} / ${segs.join(' / ')}`;
+        targets.push({ subject, path: segs, label });
+        for await (const entry of (dir as any).values()) {
+          if (entry.kind === 'directory') {
+            const child = await dir.getDirectoryHandle(entry.name);
+            await walk(child, subject, [...segs, entry.name]);
+          }
+        }
+      };
+      for (const sub of subjects) {
+        try {
+          const sh = await dirHandle.getDirectoryHandle(sub);
+          await walk(sh, sub, []);
+        } catch { /* skip */ }
+      }
+      // Exclude the current location
+      const currentLabel = path.length === 0 ? activeSubject : `${activeSubject} / ${path.join(' / ')}`;
+      setMoveTargets(targets.filter((t) => t.label !== currentLabel));
+    } catch {
+      setError('Could not list destination folders.');
+    }
+    setLoadingMoveTargets(false);
+  };
+
+  const closeMoveDialog = () => {
+    setMovingPdf(null);
+    setMoveTargets([]);
+  };
+
+  const movePdfTo = async (target: { subject: string; path: string[] }) => {
+    if (!movingPdf || !activeSubject) return;
+    try {
+      const src = await resolveDir(activeSubject, path);
+      const dst = await resolveDir(target.subject, target.path, true);
+      if (!src || !dst) throw new Error('resolve failed');
+      const srcFh = await src.getFileHandle(movingPdf);
+      const file = await srcFh.getFile();
+      const dstFh = await dst.getFileHandle(movingPdf, { create: true });
+      const writable = await (dstFh as any).createWritable();
+      await writable.write(file);
+      await writable.close();
+      await (src as any).removeEntry(movingPdf);
+      closeMoveDialog();
+      await loadContents();
+    } catch (e: any) {
+      setError(`Could not move file: ${e?.message || 'unknown error'}`);
+    }
+  };
+
   const filteredPdfs = pdfs.filter((p) =>
     p.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+  const filteredFolders = folders.filter((f) =>
+    f.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // ── Restoring from IDB ─────────────────────────────────────────
@@ -368,7 +501,7 @@ const PdfManager = () => {
               subjects.map((sub) => (
                 <div key={sub} className="group flex items-center">
                   <button
-                    onClick={() => setActiveSubject(sub)}
+                    onClick={() => switchSubject(sub)}
                     className={`flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left truncate ${
                       activeSubject === sub
                         ? 'bg-primary/10 text-primary'
@@ -392,27 +525,64 @@ const PdfManager = () => {
           </div>
         </div>
 
-        {/* ── Main: PDF Grid ──────────────────────────────────── */}
+        {/* ── Main: Folder + PDF Grid ─────────────────────────── */}
         <div className="flex-1 min-w-0">
           {!activeSubject ? (
             <div className="h-full flex items-center justify-center rounded-xl border-2 border-dashed border-border">
-              <p className="text-sm text-muted-foreground">Select a subject to view PDFs</p>
+              <p className="text-sm text-muted-foreground">Select a subject to view contents</p>
             </div>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <h3 className="font-display text-lg font-semibold text-foreground truncate">{activeSubject}</h3>
+              {/* Breadcrumbs */}
+              <div className="flex items-center gap-1 text-sm flex-wrap">
+                <button
+                  onClick={() => setPath([])}
+                  className={`hover:underline truncate ${path.length === 0 ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}
+                >
+                  {activeSubject}
+                </button>
+                {path.map((seg, i) => (
+                  <span key={i} className="flex items-center gap-1">
+                    <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                    <button
+                      onClick={() => setPath(path.slice(0, i + 1))}
+                      className={`hover:underline truncate ${i === path.length - 1 ? 'text-foreground font-semibold' : 'text-muted-foreground'}`}
+                    >
+                      {seg}
+                    </button>
+                  </span>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
+                  {path.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 gap-1 text-xs"
+                      onClick={() => setPath(path.slice(0, -1))}
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      Back
+                    </Button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 ml-auto">
                   <div className="relative">
                     <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <input
                       type="text"
-                      placeholder="Search PDFs..."
+                      placeholder="Search..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring w-36"
                     />
                   </div>
+                  <Button size="sm" variant="outline" onClick={() => setShowNewFolder(true)} className="gap-1.5 shrink-0">
+                    <FolderPlus className="w-4 h-4" />
+                    New Folder
+                  </Button>
                   <Button size="sm" onClick={addPdf} className="gap-1.5 shrink-0">
                     <Upload className="w-4 h-4" />
                     Add PDF
@@ -420,30 +590,69 @@ const PdfManager = () => {
                 </div>
               </div>
 
-              {loadingPdfs ? (
+              {loadingContents ? (
                 <div className="flex items-center justify-center py-16">
                   <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                 </div>
-              ) : pdfs.length === 0 ? (
+              ) : folders.length === 0 && pdfs.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="text-center py-16 rounded-xl border-2 border-dashed border-border"
                 >
                   <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-40" />
-                  <p className="text-sm text-muted-foreground">No PDFs in {activeSubject}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Click "Add PDF" to get started</p>
+                  <p className="text-sm text-muted-foreground">This folder is empty</p>
+                  <p className="text-xs text-muted-foreground mt-1">Create a sub-folder or add a PDF</p>
                 </motion.div>
-              ) : filteredPdfs.length === 0 ? (
+              ) : filteredFolders.length === 0 && filteredPdfs.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  <p className="text-sm">No PDFs match "{searchQuery}"</p>
+                  <p className="text-sm">No matches for "{searchQuery}"</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   <AnimatePresence>
+                    {filteredFolders.map((folder) => (
+                      <motion.div
+                        key={`folder-${folder}`}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        onDoubleClick={() => setPath([...path, folder])}
+                        className="group relative bg-card border border-border rounded-xl p-4 card-shadow hover:shadow-md transition-shadow flex flex-col items-center text-center cursor-pointer"
+                      >
+                        <div className="w-12 h-14 rounded-lg bg-accent/15 flex items-center justify-center mb-3">
+                          <Folder className="w-6 h-6 text-accent" />
+                        </div>
+                        <p className="text-xs font-medium text-foreground truncate w-full" title={folder}>
+                          {folder}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">folder</p>
+
+                        <div className="flex gap-1.5 mt-3 w-full">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex-1 h-7 text-xs gap-1"
+                            onClick={() => setPath([...path, folder])}
+                          >
+                            <FolderOpen className="w-3 h-3" />
+                            Open
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => deleteFolder(folder)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </motion.div>
+                    ))}
+
                     {filteredPdfs.map((pdf) => (
                       <motion.div
-                        key={pdf}
+                        key={`pdf-${pdf}`}
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
@@ -470,6 +679,15 @@ const PdfManager = () => {
                           <Button
                             size="sm"
                             variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
+                            onClick={() => openMoveDialog(pdf)}
+                            title="Move"
+                          >
+                            <FolderOpen className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
                             className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                             onClick={() => deletePdf(pdf)}
                           >
@@ -491,7 +709,7 @@ const PdfManager = () => {
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>New Subject</DialogTitle>
-            <DialogDescription>Create a new subject folder for your PDFs.</DialogDescription>
+            <DialogDescription>Create a new top-level subject folder.</DialogDescription>
           </DialogHeader>
           <Input
             placeholder="e.g. Chemistry"
@@ -503,6 +721,64 @@ const PdfManager = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowNewSubject(false)}>Cancel</Button>
             <Button onClick={createSubject} disabled={!newSubjectName.trim()}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── New Folder Dialog ─────────────────────────────────── */}
+      <Dialog open={showNewFolder} onOpenChange={setShowNewFolder}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>New Folder</DialogTitle>
+            <DialogDescription>
+              Create a sub-folder inside {path.length === 0 ? activeSubject : path[path.length - 1]}.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="e.g. DPP, Notes, Lectures"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && createFolder()}
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewFolder(false)}>Cancel</Button>
+            <Button onClick={createFolder} disabled={!newFolderName.trim()}>Create</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Move PDF Dialog ───────────────────────────────────── */}
+      <Dialog open={!!movingPdf} onOpenChange={(open) => !open && closeMoveDialog()}>
+        <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="truncate">Move "{movingPdf}"</DialogTitle>
+            <DialogDescription>Choose a destination folder.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto -mx-1 px-1">
+            {loadingMoveTargets ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : moveTargets.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">No other folders available</p>
+            ) : (
+              <div className="space-y-1">
+                {moveTargets.map((t) => (
+                  <button
+                    key={t.label}
+                    onClick={() => movePdfTo(t)}
+                    className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-muted/60 transition-colors"
+                  >
+                    <Folder className="w-4 h-4 text-accent shrink-0" />
+                    <span className="truncate">{t.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={closeMoveDialog}>Cancel</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
