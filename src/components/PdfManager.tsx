@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FolderOpen, Upload, FileText, Trash2, Eye,
-  FolderPlus, ChevronRight, AlertCircle, Loader2, ExternalLink, Search, Folder, ArrowLeft
+  FolderPlus, ChevronRight, AlertCircle, Loader2, ExternalLink, Search, Folder, ArrowLeft,
+  Maximize2, Minimize2, ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +31,8 @@ const PdfManager = () => {
   const [loadingContents, setLoadingContents] = useState(false);
   const [viewingPdf, setViewingPdf] = useState<string | null>(null);
   const [viewPdfUrl, setViewPdfUrl] = useState<string | null>(null);
+  const [pdfFullscreen, setPdfFullscreen] = useState(false);
+  const [pdfZoom, setPdfZoom] = useState(100); // percent
   const [newSubjectName, setNewSubjectName] = useState('');
   const [showNewSubject, setShowNewSubject] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
