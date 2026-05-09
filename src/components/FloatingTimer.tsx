@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, Maximize2, GripHorizontal } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import PipTimer from './PipTimer';
 
 const FloatingTimer = ({ visible, onGoToTimer }: { visible: boolean; onGoToTimer: () => void }) => {
   const [endTime] = useLocalStorage<number | null>('studyflow-timer-end', null);
