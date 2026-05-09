@@ -72,12 +72,6 @@ const FloatingTimer = ({ visible, onGoToTimer }: { visible: boolean; onGoToTimer
         </span>
       </div>
 
-      {/* PiP floating-above-all-apps button */}
-      <PipTimer
-        onRequestStart={() => window.dispatchEvent(new CustomEvent('studyflow-timer-start'))}
-        onRequestPause={() => window.dispatchEvent(new CustomEvent('studyflow-timer-pause'))}
-      />
-
       {/* Expand button */}
       <button
         onClick={(e) => {
