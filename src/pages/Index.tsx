@@ -12,6 +12,7 @@ import OnboardingScreen from '@/components/OnboardingScreen';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import BadgeToast from '@/components/BadgeToast';
 import FloatingTimer from '@/components/FloatingTimer';
+import PipTimer from '@/components/PipTimer';
 import { useProfile } from '@/hooks/useProfile';
 import { useGamification } from '@/hooks/useGamification';
 import type { TabId, StreakData, StudySession } from '@/lib/types';
@@ -161,6 +162,9 @@ const Index = () => {
 
       {/* Floating mini timer — visible when not on timer tab */}
       <FloatingTimer visible={activeTab !== 'timer'} onGoToTimer={() => setActiveTab('timer')} />
+
+      {/* Always-on-top Picture-in-Picture timer (auto-opens on Start) */}
+      <PipTimer />
 
       {/* Mobile bottom navigation */}
       <MobileBottomNav activeTab={activeTab} onTabChange={handleTabChange} />

@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Play, Pause, PictureInPicture2 } from 'lucide-react';
+import { Play, Pause } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
-// Document Picture-in-Picture API typings (not yet in TS lib)
 declare global {
   interface Window {
     documentPictureInPicture?: {
@@ -17,14 +16,13 @@ const isPipSupported = () =>
   typeof window !== 'undefined' && 'documentPictureInPicture' in window;
 
 /**
- * Floating "always on top" timer powered by the Document Picture-in-Picture API.
- * Shows remaining time / total, subject, and a start–pause button.
- * Auto-closes when the timer is reset or finished.
+ * Always-on-top floating timer using Document Picture-in-Picture.
+ * - Opens automatically when a focus session starts
+ * - Stays visible while paused
+ * - Closes automatically when the timer is reset/finished, or when the app
+ *   window itself becomes visible (user opened the app again)
  */
-const PipTimer = ({ onRequestStart, onRequestPause }: {
-  onRequestStart: () => void;
-  onRequestPause: () => void;
-}) => {
+const PipTimer = () => {
   const [endTime] = useLocalStorage<number | null>('studyflow-timer-end', null);
   const [timerMode] = useLocalStorage<'focus' | 'break'>('studyflow-timer-mode', 'focus');
   const [timerSubject] = useLocalStorage<string>('studyflow-timer-active-subject', '');
@@ -37,6 +35,7 @@ const PipTimer = ({ onRequestStart, onRequestPause }: {
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const [now, setNow] = useState(Date.now());
   const lastRemainingRef = useRef<number>(0);
+  const triedRef = useRef(false);
 
   const isActive = !!(endTime || (sessionStartTime && pauseStartTime));
   const isPaused = !!pauseStartTime && !endTime;
@@ -51,32 +50,24 @@ const PipTimer = ({ onRequestStart, onRequestPause }: {
   const mins = Math.floor(remainingSec / 60);
   const secs = remainingSec % 60;
   const totalMins = Math.floor(totalSec / 60);
+  const progress = totalSec > 0 ? ((totalSec - remainingSec) / totalSec) * 100 : 0;
+  const displaySubject = timerSubject || (timerMode === 'break' ? 'Break' : 'Focus');
 
-  // Tick while the PiP is open and timer running
+  // Tick
   useEffect(() => {
     if (!pipWin || !isRunning) return;
     const id = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(id);
   }, [pipWin, isRunning]);
 
-  // Auto-close PiP when timer is no longer active
-  useEffect(() => {
-    if (pipWin && !isActive) {
-      try { pipWin.close(); } catch {}
-    }
-  }, [isActive, pipWin]);
-
   const open = useCallback(async () => {
-    if (!isPipSupported()) {
-      alert('Floating timer requires Chrome/Edge 116+ on desktop.');
-      return;
-    }
+    if (!isPipSupported() || window.documentPictureInPicture!.window) return;
     try {
       const win = await window.documentPictureInPicture!.requestWindow({
-        width: 280,
-        height: 140,
+        width: 220,
+        height: 96,
       });
-      // Copy parent stylesheets so Tailwind / tokens work in the PiP doc
+      // Inherit stylesheets so Tailwind/tokens work
       [...document.styleSheets].forEach((sheet) => {
         try {
           const css = [...sheet.cssRules].map((r) => r.cssText).join('');
@@ -92,88 +83,99 @@ const PipTimer = ({ onRequestStart, onRequestPause }: {
           }
         }
       });
-      // Inherit dark mode
       if (document.documentElement.classList.contains('dark')) {
         win.document.documentElement.classList.add('dark');
       }
-      win.document.title = 'StudyFlow Timer';
+      win.document.title = 'StudyFlow';
+      win.document.body.style.margin = '0';
+      win.document.body.style.overflow = 'hidden';
 
       const root = win.document.createElement('div');
       win.document.body.appendChild(root);
-      win.document.body.style.margin = '0';
 
       win.addEventListener('pagehide', () => {
         setPipWin(null);
         setContainer(null);
+        triedRef.current = false;
       });
 
       setPipWin(win);
       setContainer(root);
     } catch (e) {
-      console.error('Failed to open PiP', e);
+      // silently ignore — user gesture may have expired
     }
   }, []);
 
-  const close = useCallback(() => {
-    if (pipWin) try { pipWin.close(); } catch {}
+  // Auto-open when timer becomes active (covers Start click — user gesture is
+  // still valid at this point in microtask queue on Chromium).
+  useEffect(() => {
+    if (isActive && !pipWin && !triedRef.current && isPipSupported()) {
+      triedRef.current = true;
+      open();
+    }
+    if (!isActive) {
+      triedRef.current = false;
+    }
+  }, [isActive, pipWin, open]);
+
+  // Auto-close PiP when timer ends/cancels OR when the main app becomes visible
+  useEffect(() => {
+    if (pipWin && !isActive) {
+      try { pipWin.close(); } catch {}
+    }
+  }, [isActive, pipWin]);
+
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && pipWin) {
+        try { pipWin.close(); } catch {}
+      }
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
   }, [pipWin]);
 
-  const displaySubject = timerSubject || (timerMode === 'break' ? 'Break' : 'Focus');
-  const progress = totalSec > 0 ? ((totalSec - remainingSec) / totalSec) * 100 : 0;
+  const handleToggle = () => {
+    if (isRunning) window.dispatchEvent(new CustomEvent('studyflow-timer-pause'));
+    else window.dispatchEvent(new CustomEvent('studyflow-timer-start'));
+  };
 
-  const pipContent = container && (
-    <div className="bg-background text-foreground h-screen w-screen flex flex-col justify-between p-3 font-body select-none">
-      <div className="flex items-center justify-between gap-2 min-w-0">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-            isPaused ? 'bg-amber-400' : timerMode === 'break' ? 'bg-accent animate-pulse' : 'bg-primary animate-pulse'
-          }`} />
-          <span className="text-xs font-medium text-muted-foreground truncate">{displaySubject}</span>
-        </div>
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground flex-shrink-0">
-          {isPaused ? 'Paused' : timerMode === 'break' ? 'Break' : 'Focus'}
+  if (!container) return null;
+
+  const ui = (
+    <div className="bg-background text-foreground h-screen w-screen flex items-center gap-2.5 px-3 py-2 font-body select-none overflow-hidden">
+      {/* Status dot */}
+      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+        isPaused ? 'bg-amber-400' : timerMode === 'break' ? 'bg-accent animate-pulse' : 'bg-primary animate-pulse'
+      }`} />
+
+      {/* Time + subject */}
+      <div className="flex-1 min-w-0 flex flex-col leading-tight">
+        <span className="font-display font-bold tabular-nums text-xl leading-none">
+          {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+          <span className="text-[10px] text-muted-foreground font-normal ml-1">/{totalMins}m</span>
+        </span>
+        <span className="text-[10px] text-muted-foreground truncate mt-0.5">
+          {isPaused ? 'Paused · ' : ''}{displaySubject}
         </span>
       </div>
 
-      <div className="flex items-end justify-between gap-2">
-        <div className="flex items-baseline gap-1.5 min-w-0">
-          <span className="font-display font-bold tabular-nums text-3xl leading-none">
-            {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
-          </span>
-          <span className="text-xs text-muted-foreground tabular-nums">/ {totalMins}m</span>
-        </div>
-        <button
-          onClick={() => (isRunning ? onRequestPause() : onRequestStart())}
-          className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 active:scale-95 transition flex-shrink-0"
-          title={isRunning ? 'Pause' : 'Start'}
-        >
-          {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-        </button>
-      </div>
-
-      <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
-        <div
-          className={`h-full ${timerMode === 'break' ? 'bg-accent' : 'bg-primary'} transition-all`}
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      {/* Start/Pause */}
+      <button
+        onClick={handleToggle}
+        className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 active:scale-95 transition flex-shrink-0"
+        title={isRunning ? 'Pause' : 'Start'}
+      >
+        {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+      </button>
     </div>
   );
 
-  if (!isActive) return null;
-
-  return (
-    <>
-      <button
-        onClick={pipWin ? close : open}
-        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        title={pipWin ? 'Close floating timer' : 'Open floating timer (above all apps)'}
-      >
-        <PictureInPicture2 className="w-3.5 h-3.5" />
-      </button>
-      {container && pipContent && createPortal(pipContent, container)}
-    </>
-  );
+  return createPortal(ui, container);
 };
 
 export default PipTimer;
