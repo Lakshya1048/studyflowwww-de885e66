@@ -463,17 +463,44 @@ const FocusTimer = () => {
             </div>
           )}
 
-          {!taskModeEnabled && (
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1 block">Subject</label>
-              <input
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="e.g. Mathematics"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              />
-            </div>
-          )}
+          {!taskModeEnabled && (() => {
+            const DEFAULT_SUBJECTS = ['English', 'Math', 'Physics', 'Chemistry', 'Biology', 'AI', 'IP', 'Other'];
+            const knownSubjects = Array.from(new Set([
+              ...DEFAULT_SUBJECTS,
+              ...sessions.map((s) => s.subject),
+              ...tasks.map((t) => t.subject),
+            ].filter(Boolean)));
+            const isCustom = !!subject && !knownSubjects.includes(subject);
+            const selectValue = isCustom ? '__custom__' : (subject || '');
+            return (
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1 block">Subject</label>
+                <select
+                  value={selectValue}
+                  onChange={(e) => {
+                    if (e.target.value === '__custom__') setSubject(' ');
+                    else setSubject(e.target.value);
+                  }}
+                  className="w-full rounded-md border border-input bg-card text-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                >
+                  <option value="">— Pick a subject —</option>
+                  {knownSubjects.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                  <option value="__custom__">+ Custom subject…</option>
+                </select>
+                {isCustom && (
+                  <input
+                    autoFocus
+                    value={subject.trim()}
+                    onChange={(e) => setSubject(e.target.value)}
+                    placeholder="Type subject name"
+                    className="w-full mt-2 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                )}
+              </div>
+            );
+          })()}
 
           <div>
             <label className="text-sm font-medium text-foreground mb-2 block">Focus Duration</label>
