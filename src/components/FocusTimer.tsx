@@ -126,6 +126,18 @@ const FocusTimer = () => {
     return () => document.removeEventListener('fullscreenchange', handleFsChange);
   }, []);
 
+  // Listen for start/pause requests from the floating PiP timer
+  useEffect(() => {
+    const onStart = () => { if (!isRunning) startTimer(); };
+    const onPause = () => { if (isRunning) pauseTimer(); };
+    window.addEventListener('studyflow-timer-start', onStart);
+    window.addEventListener('studyflow-timer-pause', onPause);
+    return () => {
+      window.removeEventListener('studyflow-timer-start', onStart);
+      window.removeEventListener('studyflow-timer-pause', onPause);
+    };
+  });
+
   const totalTime = isBreak ? breakDuration * 60 : focusDuration * 60;
   const progress = ((totalTime - timeLeft) / totalTime) * 100;
   const minutes = Math.floor(timeLeft / 60);

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Play, Pause, Maximize2, GripHorizontal } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
+import PipTimer from './PipTimer';
 
 const FloatingTimer = ({ visible, onGoToTimer }: { visible: boolean; onGoToTimer: () => void }) => {
   const [endTime] = useLocalStorage<number | null>('studyflow-timer-end', null);
@@ -71,6 +72,12 @@ const FloatingTimer = ({ visible, onGoToTimer }: { visible: boolean; onGoToTimer
           {displaySubject}
         </span>
       </div>
+
+      {/* PiP floating-above-all-apps button */}
+      <PipTimer
+        onRequestStart={() => window.dispatchEvent(new CustomEvent('studyflow-timer-start'))}
+        onRequestPause={() => window.dispatchEvent(new CustomEvent('studyflow-timer-pause'))}
+      />
 
       {/* Expand button */}
       <button
