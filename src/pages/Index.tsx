@@ -12,6 +12,7 @@ import OnboardingScreen from '@/components/OnboardingScreen';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import BadgeToast from '@/components/BadgeToast';
 import FloatingTimer from '@/components/FloatingTimer';
+import PipTimer from '@/components/PipTimer';
 import { useProfile } from '@/hooks/useProfile';
 import { useGamification } from '@/hooks/useGamification';
 import type { TabId, StreakData, StudySession } from '@/lib/types';
