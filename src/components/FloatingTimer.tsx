@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, Maximize2, GripHorizontal } from 'lucide-react';
+import { Play, Pause, Maximize2, GripHorizontal, PictureInPicture2 } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const FloatingTimer = ({ visible, onGoToTimer }: { visible: boolean; onGoToTimer: () => void }) => {
@@ -71,6 +71,18 @@ const FloatingTimer = ({ visible, onGoToTimer }: { visible: boolean; onGoToTimer
           {displaySubject}
         </span>
       </div>
+
+      {/* Pop out to always-on-top window */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          window.dispatchEvent(new CustomEvent('studyflow-pip-open'));
+        }}
+        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        title="Pop out floating window (Chrome/Edge desktop, not in preview iframe)"
+      >
+        <PictureInPicture2 className="w-3.5 h-3.5" />
+      </button>
 
       {/* Expand button */}
       <button
