@@ -235,6 +235,8 @@ const FocusTimer = () => {
     setTimerMode(isBreak ? 'break' : 'focus');
     setTimerSubject(subject);
     setIsRunning(true);
+    // Fire synchronously so PiP requestWindow keeps the user-gesture context
+    window.dispatchEvent(new CustomEvent('studyflow-pip-open'));
     // If resuming from pause, account for paused duration
     if (pauseStartTime) {
       const pausedDuration = Date.now() - pauseStartTime;
