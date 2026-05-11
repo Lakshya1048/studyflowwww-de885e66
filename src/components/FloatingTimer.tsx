@@ -72,6 +72,18 @@ const FloatingTimer = ({ visible, onGoToTimer }: { visible: boolean; onGoToTimer
         </span>
       </div>
 
+      {/* Pop out to always-on-top window */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          window.dispatchEvent(new CustomEvent('studyflow-pip-open'));
+        }}
+        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        title="Pop out floating window (Chrome/Edge desktop, not in preview iframe)"
+      >
+        <PictureInPicture2 className="w-3.5 h-3.5" />
+      </button>
+
       {/* Expand button */}
       <button
         onClick={(e) => {
