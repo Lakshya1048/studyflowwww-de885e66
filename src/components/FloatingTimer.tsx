@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Pause, Maximize2, GripHorizontal } from 'lucide-react';
+import { Play, Pause, Maximize2, GripHorizontal, PictureInPicture2 } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 const FloatingTimer = ({ visible, onGoToTimer }: { visible: boolean; onGoToTimer: () => void }) => {
