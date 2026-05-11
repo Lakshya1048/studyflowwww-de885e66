@@ -61,7 +61,15 @@ const PipTimer = () => {
   }, [pipWin, isRunning]);
 
   const open = useCallback(() => {
-    if (!isPipSupported() || window.documentPictureInPicture!.window) return;
+    if (!isPipSupported()) {
+      console.warn('[PipTimer] Document Picture-in-Picture not supported in this browser. Use Chrome/Edge desktop, the Tauri build, or open the published URL in a new tab.');
+      return;
+    }
+    if (window.self !== window.top) {
+      console.warn('[PipTimer] Cannot open PiP inside an iframe (Lovable preview). Open the app in a new tab or run the desktop build.');
+      return;
+    }
+    if (window.documentPictureInPicture!.window) return;
     // IMPORTANT: call requestWindow synchronously (no await before it) to keep
     // the user-gesture context alive.
     const p = window.documentPictureInPicture!.requestWindow({ width: 220, height: 96 });
