@@ -60,14 +60,12 @@ const PipTimer = () => {
     return () => clearInterval(id);
   }, [pipWin, isRunning]);
 
-  const open = useCallback(async () => {
+  const open = useCallback(() => {
     if (!isPipSupported() || window.documentPictureInPicture!.window) return;
-    try {
-      const win = await window.documentPictureInPicture!.requestWindow({
-        width: 220,
-        height: 96,
-      });
-      // Inherit stylesheets so Tailwind/tokens work
+    // IMPORTANT: call requestWindow synchronously (no await before it) to keep
+    // the user-gesture context alive.
+    const p = window.documentPictureInPicture!.requestWindow({ width: 220, height: 96 });
+    p.then((win) => {
       [...document.styleSheets].forEach((sheet) => {
         try {
           const css = [...sheet.cssRules].map((r) => r.cssText).join('');
@@ -101,22 +99,28 @@ const PipTimer = () => {
 
       setPipWin(win);
       setContainer(root);
-    } catch (e) {
-      // silently ignore — user gesture may have expired
-    }
+    }).catch(() => {
+      triedRef.current = false;
+    });
   }, []);
 
-  // Auto-open when timer becomes active (covers Start click — user gesture is
-  // still valid at this point in microtask queue on Chromium).
+  // Listen for explicit open requests dispatched from the Start click handler.
+  // This MUST run synchronously inside the gesture chain.
   useEffect(() => {
-    if (isActive && !pipWin && !triedRef.current && isPipSupported()) {
-      triedRef.current = true;
-      open();
-    }
-    if (!isActive) {
-      triedRef.current = false;
-    }
-  }, [isActive, pipWin, open]);
+    const onOpen = () => {
+      if (!triedRef.current && !pipWin) {
+        triedRef.current = true;
+        open();
+      }
+    };
+    window.addEventListener('studyflow-pip-open', onOpen);
+    return () => window.removeEventListener('studyflow-pip-open', onOpen);
+  }, [open, pipWin]);
+
+  // Reset gate when timer stops
+  useEffect(() => {
+    if (!isActive) triedRef.current = false;
+  }, [isActive]);
 
   // Auto-close PiP when timer ends/cancels OR when the main app becomes visible
   useEffect(() => {
