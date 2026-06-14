@@ -34,16 +34,34 @@ Hard rules:
 - Be concise but NEVER omit anything important. No filler, no repetition, no generic advice.
 - Use Unicode for math: √, ², ³, θ, π, α, β, Δ, λ, ω, μ, ×, ÷, ±, ≠, ≤, ≥, →, ∞, ∫, ∑, subscripts v₀, a₁, etc.
 
-If a REFERENCE STYLE sample is provided, mirror its structure, heading style, bullet pattern, table use, highlight style, and density — while keeping the content from the chapter source.`;
+If a REFERENCE STYLE sample is provided (text OR images of handwritten/scanned notes), carefully study it and MIRROR its structure, heading style, bullet pattern, table use, highlight style, indentation, symbol usage, abbreviations, and overall density — while using content from the chapter source.
+
+If the chapter source is provided as IMAGES (scanned/handwritten pages), read them carefully like an OCR + tutor would: extract every formula, label, arrow, diagram caption, and handwritten remark, then build the notes from that.`;
+
+type Body = {
+  chapterText?: string;
+  referenceText?: string;
+  chapterImages?: string[]; // base64 JPEGs (no data: prefix)
+  referenceImages?: string[];
+  intensity?: string;
+  chapterName?: string;
+};
+
+function imgPart(b64: string) {
+  return { type: "image_url", image_url: { url: `data:image/jpeg;base64,${b64}` } };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const { chapterText, referenceText, intensity, chapterName } = await req.json();
+    const body: Body = await req.json();
+    const { chapterText, referenceText, chapterImages, referenceImages, intensity, chapterName } = body;
 
-    if (!chapterText || typeof chapterText !== "string" || chapterText.trim().length < 50) {
-      return new Response(JSON.stringify({ error: "Chapter text is too short or missing." }), {
+    const hasChapterText = !!(chapterText && chapterText.trim().length >= 50);
+    const hasChapterImages = !!(chapterImages && chapterImages.length > 0);
+    if (!hasChapterText && !hasChapterImages) {
+      return new Response(JSON.stringify({ error: "No chapter content provided." }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -57,24 +75,38 @@ serve(async (req) => {
       });
     }
 
-    const intensityKey = (intensity as string) in INTENSITY_GUIDE ? (intensity as string) : "standard";
+    const intensityKey = intensity && intensity in INTENSITY_GUIDE ? intensity : "standard";
     const intensityInstr = INTENSITY_GUIDE[intensityKey];
 
-    // Truncate very large inputs to stay within model context (Gemini 2.5 Pro handles 1M, but keep safe)
     const MAX_CHAPTER = 180_000;
     const MAX_REF = 30_000;
-    const chap = chapterText.length > MAX_CHAPTER ? chapterText.slice(0, MAX_CHAPTER) : chapterText;
-    const ref = referenceText && typeof referenceText === "string"
-      ? (referenceText.length > MAX_REF ? referenceText.slice(0, MAX_REF) : referenceText)
-      : "";
+    const chap = chapterText ? (chapterText.length > MAX_CHAPTER ? chapterText.slice(0, MAX_CHAPTER) : chapterText) : "";
+    const ref = referenceText ? (referenceText.length > MAX_REF ? referenceText.slice(0, MAX_REF) : referenceText) : "";
 
-    const userPrompt = [
-      `Generate exam-oriented short notes for the following chapter${chapterName ? ` ("${chapterName}")` : ""}.`,
-      `\nINTENSITY: ${intensityInstr}`,
-      ref ? `\n--- REFERENCE STYLE SAMPLE (mirror its format/style, NOT its content) ---\n${ref}\n--- END REFERENCE ---\n` : "",
-      `\n--- CHAPTER SOURCE TEXT ---\n${chap}\n--- END CHAPTER ---`,
-      `\nNow output the complete short notes in Markdown.`,
-    ].join("\n");
+    // Build multimodal user content
+    const parts: unknown[] = [];
+
+    let intro = `Generate exam-oriented short notes for the following chapter${chapterName ? ` ("${chapterName}")` : ""}.\n\nINTENSITY: ${intensityInstr}`;
+    parts.push({ type: "text", text: intro });
+
+    if (referenceImages && referenceImages.length > 0) {
+      parts.push({ type: "text", text: `\n--- REFERENCE STYLE SAMPLE (handwritten/scanned — mirror its format/style, NOT its content) ---` });
+      for (const img of referenceImages) parts.push(imgPart(img));
+      parts.push({ type: "text", text: `--- END REFERENCE IMAGES ---` });
+    } else if (ref) {
+      parts.push({ type: "text", text: `\n--- REFERENCE STYLE SAMPLE (mirror its format/style, NOT its content) ---\n${ref}\n--- END REFERENCE ---` });
+    }
+
+    if (chapterImages && chapterImages.length > 0) {
+      parts.push({ type: "text", text: `\n--- CHAPTER SOURCE (scanned/handwritten pages — read every page) ---` });
+      for (const img of chapterImages) parts.push(imgPart(img));
+      parts.push({ type: "text", text: `--- END CHAPTER IMAGES ---` });
+    }
+    if (chap) {
+      parts.push({ type: "text", text: `\n--- CHAPTER SOURCE TEXT ---\n${chap}\n--- END CHAPTER ---` });
+    }
+
+    parts.push({ type: "text", text: `\nNow output the complete short notes in Markdown.` });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -86,7 +118,7 @@ serve(async (req) => {
         model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
+          { role: "user", content: parts },
         ],
         stream: true,
       }),
