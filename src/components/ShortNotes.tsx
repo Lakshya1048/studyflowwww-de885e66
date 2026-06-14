@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { extractPdfText } from '@/lib/pdfExtract';
+import { extractPdfText, extractPdfPagesAsImages } from '@/lib/pdfExtract';
 
 type Intensity = 'quick' | 'standard' | 'detailed' | 'ultra';
 
@@ -55,10 +55,23 @@ const ShortNotes = () => {
 
     let chapterText = '';
     let referenceText = '';
+    let chapterImages: string[] = [];
+    let referenceImages: string[] = [];
     try {
       chapterText = await extractPdfText(chapterFile, (p, t) => setExtractProgress({ p, t }));
+      // Heuristic: if average chars/page < 80 → treat as scanned/handwritten → render images
+      const pageCount = (chapterText.match(/--- Page /g) || []).length || 1;
+      if (chapterText.trim().length / pageCount < 80) {
+        chapterText = '';
+        chapterImages = await extractPdfPagesAsImages(chapterFile, (p, t) => setExtractProgress({ p, t }));
+      }
       if (referenceFile) {
         referenceText = await extractPdfText(referenceFile);
+        const refPages = (referenceText.match(/--- Page /g) || []).length || 1;
+        if (referenceText.trim().length / refPages < 80) {
+          referenceText = '';
+          referenceImages = await extractPdfPagesAsImages(referenceFile, undefined, { maxPages: 15 });
+        }
       }
     } catch (e) {
       toast({ title: 'Could not read PDF', description: e instanceof Error ? e.message : 'Try another file', variant: 'destructive' });
@@ -69,8 +82,8 @@ const ShortNotes = () => {
     setIsExtracting(false);
     setExtractProgress(null);
 
-    if (chapterText.trim().length < 100) {
-      toast({ title: 'No readable text found', description: 'This looks like a scanned PDF. Try a text-based PDF.', variant: 'destructive' });
+    if (!chapterText && chapterImages.length === 0) {
+      toast({ title: 'Empty PDF', description: 'Could not extract anything from this file.', variant: 'destructive' });
       return;
     }
 
@@ -81,8 +94,10 @@ const ShortNotes = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          chapterText,
+          chapterText: chapterText || undefined,
+          chapterImages: chapterImages.length ? chapterImages : undefined,
           referenceText: referenceText || undefined,
+          referenceImages: referenceImages.length ? referenceImages : undefined,
           intensity,
           chapterName: chapterFile.name.replace(/\.pdf$/i, ''),
         }),
