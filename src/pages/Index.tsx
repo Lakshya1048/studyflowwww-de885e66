@@ -7,6 +7,7 @@ import PdfManager from '@/components/PdfManager';
 import ProgressTracker from '@/components/ProgressTracker';
 import CalendarView from '@/components/CalendarView';
 import DoubtSolver from '@/components/DoubtSolver';
+import ShortNotes from '@/components/ShortNotes';
 import SettingsPanel from '@/components/SettingsPanel';
 import OnboardingScreen from '@/components/OnboardingScreen';
 import MobileBottomNav from '@/components/MobileBottomNav';
@@ -149,12 +150,15 @@ const Index = () => {
 
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-2xl mx-auto p-6 pt-20 md:pt-6 pb-24 md:pb-6">
-            {activeTab !== 'doubts' && activeTab !== 'pdfs' && renderContent()}
+            {activeTab !== 'doubts' && activeTab !== 'pdfs' && activeTab !== 'shortnotes' && renderContent()}
             <div className={activeTab === 'pdfs' ? '' : 'hidden'}>
               <PdfManager />
             </div>
             <div className={activeTab === 'doubts' ? '' : 'hidden'}>
               <DoubtSolver />
+            </div>
+            <div className={activeTab === 'shortnotes' ? '' : 'hidden'}>
+              <ShortNotes />
             </div>
           </div>
         </main>

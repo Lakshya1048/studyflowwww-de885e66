@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckSquare, Timer, BarChart3, LayoutDashboard, Moon, Sun, MessageCircleQuestion, FileText, Settings, User, CalendarDays } from 'lucide-react';
+import { CheckSquare, Timer, BarChart3, LayoutDashboard, Moon, Sun, MessageCircleQuestion, FileText, Settings, User, CalendarDays, BookOpen } from 'lucide-react';
 import type { TabId, StreakData } from '@/lib/types';
 import type { Profile } from '@/hooks/useProfile';
 import type { RankInfo } from '@/hooks/useGamification';
@@ -27,6 +27,7 @@ const navItems: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'timer', label: 'Focus Timer', icon: Timer },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'pdfs', label: 'Study Materials', icon: FileText },
+  { id: 'shortnotes', label: 'Short Notes', icon: BookOpen },
   { id: 'doubts', label: 'Doubt Solver', icon: MessageCircleQuestion },
   { id: 'progress', label: 'Progress', icon: BarChart3 },
 ];
