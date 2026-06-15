@@ -204,7 +204,7 @@ const ShortNotes = () => {
     await new Promise((r) => setTimeout(r, 250));
 
     try {
-      await html2pdf()
+      await (html2pdf() as any)
         .set({
           margin: [10, 10, 12, 10],
           filename: `${note.title} - short notes.pdf`,
