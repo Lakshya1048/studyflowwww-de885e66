@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Upload, Sparkles, Loader2, Trash2, Download, X, BookOpen } from 'lucide-react';
+import { FileText, Upload, Sparkles, Loader2, Trash2, Download, X, BookOpen, FileDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+// @ts-ignore - no types
+import html2pdf from 'html2pdf.js';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
@@ -169,6 +171,57 @@ const ShortNotes = () => {
     window.URL.revokeObjectURL(url);
   };
 
+  const downloadPdf = async (note: { title: string; content: string }) => {
+    // Render markdown into a hidden styled container, then convert to PDF
+    const { default: ReactDOM } = await import('react-dom/client');
+    const container = document.createElement('div');
+    container.style.cssText = 'position:fixed;left:-99999px;top:0;width:780px;background:#ffffff;color:#0f172a;padding:48px 56px;font-family:Georgia,"Times New Roman",serif;font-size:13.5px;line-height:1.55;';
+    container.className = 'short-notes-pdf-export';
+    document.body.appendChild(container);
+
+    const root = ReactDOM.createRoot(container);
+    root.render(
+      <div className="prose prose-sm max-w-none" style={{ color: '#0f172a' }}>
+        <style>{`
+          .short-notes-pdf-export h1{font-size:22px;font-weight:800;border-bottom:2px solid #0f172a;padding-bottom:6px;margin:0 0 14px;}
+          .short-notes-pdf-export h2{font-size:17px;font-weight:700;color:#1e3a8a;margin:18px 0 8px;border-left:4px solid #1e3a8a;padding-left:8px;}
+          .short-notes-pdf-export h3{font-size:14.5px;font-weight:700;color:#334155;margin:12px 0 6px;}
+          .short-notes-pdf-export p{margin:6px 0;}
+          .short-notes-pdf-export ul,.short-notes-pdf-export ol{margin:6px 0 6px 22px;}
+          .short-notes-pdf-export li{margin:3px 0;}
+          .short-notes-pdf-export strong{color:#7c2d12;}
+          .short-notes-pdf-export blockquote{border-left:3px solid #f59e0b;background:#fffbeb;padding:6px 10px;margin:8px 0;color:#78350f;font-style:italic;}
+          .short-notes-pdf-export table{border-collapse:collapse;width:100%;margin:8px 0;font-size:12.5px;}
+          .short-notes-pdf-export th,.short-notes-pdf-export td{border:1px solid #cbd5e1;padding:5px 8px;text-align:left;}
+          .short-notes-pdf-export th{background:#e2e8f0;font-weight:700;}
+          .short-notes-pdf-export code{background:#f1f5f9;padding:1px 4px;border-radius:3px;font-size:12px;}
+        `}</style>
+        <ReactMarkdown>{note.content}</ReactMarkdown>
+      </div>
+    );
+
+    // wait a tick for render
+    await new Promise((r) => setTimeout(r, 250));
+
+    try {
+      await (html2pdf() as any)
+        .set({
+          margin: [10, 10, 12, 10],
+          filename: `${note.title} - short notes.pdf`,
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+        })
+        .from(container)
+        .save();
+    } finally {
+      root.unmount();
+      container.remove();
+    }
+  };
+
+
   const deleteNote = (id: string) => {
     setHistory((prev) => prev.filter((n) => n.id !== id));
   };
@@ -183,9 +236,14 @@ const ShortNotes = () => {
             <h2 className="font-display text-xl font-bold text-foreground">{viewing.title}</h2>
             <p className="text-xs text-muted-foreground">{INTENSITY_LIST.find((i) => i.key === viewing.intensity)?.label} · {new Date(viewing.createdAt).toLocaleDateString()}</p>
           </div>
-          <Button size="sm" variant="outline" onClick={() => download(viewing)} className="gap-1.5">
-            <Download className="w-4 h-4" /> Download
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => downloadPdf(viewing)} className="gap-1.5">
+              <FileDown className="w-4 h-4" /> PDF
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => download(viewing)} className="gap-1.5">
+              <Download className="w-4 h-4" /> .md
+            </Button>
+          </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-5 prose prose-sm dark:prose-invert max-w-none prose-headings:font-display prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-table:text-foreground">
           <ReactMarkdown>{viewing.content}</ReactMarkdown>
@@ -318,9 +376,14 @@ const ShortNotes = () => {
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm font-semibold text-foreground">Generated Notes</p>
             {generated && !isGenerating && (
-              <Button size="sm" variant="outline" onClick={() => download({ title: chapterFile?.name.replace(/\.pdf$/i, '') || 'notes', content: generated })} className="gap-1.5">
-                <Download className="w-3.5 h-3.5" /> Download
-              </Button>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => downloadPdf({ title: chapterFile?.name.replace(/\.pdf$/i, '') || 'notes', content: generated })} className="gap-1.5">
+                  <FileDown className="w-3.5 h-3.5" /> PDF
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => download({ title: chapterFile?.name.replace(/\.pdf$/i, '') || 'notes', content: generated })} className="gap-1.5">
+                  <Download className="w-3.5 h-3.5" /> .md
+                </Button>
+              </div>
             )}
           </div>
           <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-display prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-table:text-foreground">
@@ -339,7 +402,10 @@ const ShortNotes = () => {
                 <p className="text-sm font-medium text-foreground truncate">{n.title}</p>
                 <p className="text-xs text-muted-foreground">{INTENSITY_LIST.find((i) => i.key === n.intensity)?.label} · {new Date(n.createdAt).toLocaleDateString()}</p>
               </button>
-              <button onClick={() => download(n)} className="p-1.5 text-muted-foreground hover:text-foreground rounded">
+              <button onClick={() => downloadPdf(n)} title="Download PDF" className="p-1.5 text-muted-foreground hover:text-primary rounded">
+                <FileDown className="w-4 h-4" />
+              </button>
+              <button onClick={() => download(n)} title="Download Markdown" className="p-1.5 text-muted-foreground hover:text-foreground rounded">
                 <Download className="w-4 h-4" />
               </button>
               <button onClick={() => deleteNote(n.id)} className="p-1.5 text-muted-foreground hover:text-destructive rounded">
