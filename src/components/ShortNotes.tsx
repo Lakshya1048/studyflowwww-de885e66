@@ -402,7 +402,10 @@ const ShortNotes = () => {
                 <p className="text-sm font-medium text-foreground truncate">{n.title}</p>
                 <p className="text-xs text-muted-foreground">{INTENSITY_LIST.find((i) => i.key === n.intensity)?.label} · {new Date(n.createdAt).toLocaleDateString()}</p>
               </button>
-              <button onClick={() => download(n)} className="p-1.5 text-muted-foreground hover:text-foreground rounded">
+              <button onClick={() => downloadPdf(n)} title="Download PDF" className="p-1.5 text-muted-foreground hover:text-primary rounded">
+                <FileDown className="w-4 h-4" />
+              </button>
+              <button onClick={() => download(n)} title="Download Markdown" className="p-1.5 text-muted-foreground hover:text-foreground rounded">
                 <Download className="w-4 h-4" />
               </button>
               <button onClick={() => deleteNote(n.id)} className="p-1.5 text-muted-foreground hover:text-destructive rounded">
