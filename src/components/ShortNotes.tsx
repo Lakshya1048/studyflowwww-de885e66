@@ -236,9 +236,14 @@ const ShortNotes = () => {
             <h2 className="font-display text-xl font-bold text-foreground">{viewing.title}</h2>
             <p className="text-xs text-muted-foreground">{INTENSITY_LIST.find((i) => i.key === viewing.intensity)?.label} · {new Date(viewing.createdAt).toLocaleDateString()}</p>
           </div>
-          <Button size="sm" variant="outline" onClick={() => download(viewing)} className="gap-1.5">
-            <Download className="w-4 h-4" /> Download
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => downloadPdf(viewing)} className="gap-1.5">
+              <FileDown className="w-4 h-4" /> PDF
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => download(viewing)} className="gap-1.5">
+              <Download className="w-4 h-4" /> .md
+            </Button>
+          </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-5 prose prose-sm dark:prose-invert max-w-none prose-headings:font-display prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-table:text-foreground">
           <ReactMarkdown>{viewing.content}</ReactMarkdown>
