@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Upload, Sparkles, Loader2, Trash2, Download, X, BookOpen } from 'lucide-react';
+import { FileText, Upload, Sparkles, Loader2, Trash2, Download, X, BookOpen, FileDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+// @ts-ignore - no types
+import html2pdf from 'html2pdf.js';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
