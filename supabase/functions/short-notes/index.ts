@@ -94,11 +94,11 @@ serve(async (req) => {
     parts.push({ type: "text", text: intro });
 
     if (referenceImages && referenceImages.length > 0) {
-      parts.push({ type: "text", text: `\n--- REFERENCE STYLE SAMPLE (handwritten/scanned — mirror its format/style, NOT its content) ---` });
+      parts.push({ type: "text", text: `\n--- REFERENCE STYLE SAMPLE (handwritten/scanned — CLONE its exact format, structure, symbols, arrows, abbreviations, heading style, bullet style, density and flow. ONLY content changes, style MUST match.) ---` });
       for (const img of referenceImages) parts.push(imgPart(img));
       parts.push({ type: "text", text: `--- END REFERENCE IMAGES ---` });
     } else if (ref) {
-      parts.push({ type: "text", text: `\n--- REFERENCE STYLE SAMPLE (mirror its format/style, NOT its content) ---\n${ref}\n--- END REFERENCE ---` });
+      parts.push({ type: "text", text: `\n--- REFERENCE STYLE SAMPLE (CLONE its exact format/structure, ONLY content changes) ---\n${ref}\n--- END REFERENCE ---` });
     }
 
     if (chapterImages && chapterImages.length > 0) {
@@ -110,7 +110,8 @@ serve(async (req) => {
       parts.push({ type: "text", text: `\n--- CHAPTER SOURCE TEXT ---\n${chap}\n--- END CHAPTER ---` });
     }
 
-    parts.push({ type: "text", text: `\nNow output the complete short notes in Markdown.` });
+    const hasRef = !!(referenceImages?.length || ref);
+    parts.push({ type: "text", text: `\nNow output the complete short notes in Markdown.${hasRef ? " REMEMBER: the format/style MUST visually mirror the reference sample exactly — same headings, bullets, arrows, abbreviations, layout pattern and density. The student should not be able to tell who wrote which one." : ""}` });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
