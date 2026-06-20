@@ -264,8 +264,25 @@ const ShortNotes = () => {
         <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-primary" /> Short Notes
         </h2>
-        <p className="text-sm text-muted-foreground">Upload a chapter PDF — get exam-ready short notes instantly.</p>
+        <p className="text-sm text-muted-foreground">Upload a chapter PDF — get exam-ready short notes or a complete formula sheet.</p>
       </div>
+
+      {/* Mode toggle */}
+      <div className="grid grid-cols-2 gap-2 p-1 rounded-xl border border-border bg-card">
+        <button
+          onClick={() => setMode('shortnotes')}
+          className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'shortnotes' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          <BookOpen className="w-4 h-4" /> Short Notes
+        </button>
+        <button
+          onClick={() => setMode('formula')}
+          className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'formula' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          <Calculator className="w-4 h-4" /> Formula Sheet
+        </button>
+      </div>
+
 
       {/* Upload cards */}
       <div className="grid sm:grid-cols-2 gap-3">
