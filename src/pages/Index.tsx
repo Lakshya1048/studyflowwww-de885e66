@@ -35,6 +35,7 @@ const Index = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [onboardingDone, setOnboardingDone] = useLocalStorage<boolean>('studyflow-onboarding-done', false);
   const [subjects, setSubjects] = useLocalStorage<string[]>('studyflow-subjects', []);
+  const [subjectsSetupDone, setSubjectsSetupDone] = useLocalStorage<boolean>('studyflow-subjects-setup-done', false);
   const [appSettings] = useLocalStorage<AppSettings>('studyflow-settings', DEFAULT_SETTINGS);
 
   // Apply compact mode on mount
