@@ -321,7 +321,8 @@ const ShortNotes = () => {
           />
         </div>
 
-        {/* Reference PDF */}
+        {/* Reference PDF (short notes mode only) */}
+        {mode === 'shortnotes' && (
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Reference Style PDF (optional)</p>
           {referenceFile ? (
