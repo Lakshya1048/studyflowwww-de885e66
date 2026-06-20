@@ -98,6 +98,7 @@ serve(async (req) => {
       });
     }
 
+    const mode = body.mode === "formula" ? "formula" : "shortnotes";
     const intensityKey = intensity && intensity in INTENSITY_GUIDE ? intensity : "standard";
     const intensityInstr = INTENSITY_GUIDE[intensityKey];
 
@@ -109,14 +110,17 @@ serve(async (req) => {
     // Build multimodal user content
     const parts: unknown[] = [];
 
-    let intro = `Generate exam-oriented short notes for the following chapter${chapterName ? ` ("${chapterName}")` : ""}.\n\nINTENSITY: ${intensityInstr}`;
+    let intro =
+      mode === "formula"
+        ? `Build a COMPLETE formula sheet for the following chapter${chapterName ? ` ("${chapterName}")` : ""}. Extract every formula, law, constant and standard result from the source. Do not include long explanations — pure formula reference.`
+        : `Generate exam-oriented short notes for the following chapter${chapterName ? ` ("${chapterName}")` : ""}.\n\nINTENSITY: ${intensityInstr}`;
     parts.push({ type: "text", text: intro });
 
-    if (referenceImages && referenceImages.length > 0) {
+    if (mode === "shortnotes" && referenceImages && referenceImages.length > 0) {
       parts.push({ type: "text", text: `\n--- REFERENCE STYLE SAMPLE (handwritten/scanned — CLONE its exact format, structure, symbols, arrows, abbreviations, heading style, bullet style, density and flow. ONLY content changes, style MUST match.) ---` });
       for (const img of referenceImages) parts.push(imgPart(img));
       parts.push({ type: "text", text: `--- END REFERENCE IMAGES ---` });
-    } else if (ref) {
+    } else if (mode === "shortnotes" && ref) {
       parts.push({ type: "text", text: `\n--- REFERENCE STYLE SAMPLE (CLONE its exact format/structure, ONLY content changes) ---\n${ref}\n--- END REFERENCE ---` });
     }
 
@@ -129,8 +133,14 @@ serve(async (req) => {
       parts.push({ type: "text", text: `\n--- CHAPTER SOURCE TEXT ---\n${chap}\n--- END CHAPTER ---` });
     }
 
-    const hasRef = !!(referenceImages?.length || ref);
-    parts.push({ type: "text", text: `\nNow output the complete short notes in Markdown.${hasRef ? " REMEMBER: the format/style MUST visually mirror the reference sample exactly — same headings, bullets, arrows, abbreviations, layout pattern and density. The student should not be able to tell who wrote which one." : ""}` });
+    const hasRef = mode === "shortnotes" && !!(referenceImages?.length || ref);
+    parts.push({
+      type: "text",
+      text:
+        mode === "formula"
+          ? `\nNow output the COMPLETE formula sheet in Markdown. Cover EVERY formula and constant from the chapter. No prose — only formula reference style.`
+          : `\nNow output the complete short notes in Markdown.${hasRef ? " REMEMBER: the format/style MUST visually mirror the reference sample exactly — same headings, bullets, arrows, abbreviations, layout pattern and density. The student should not be able to tell who wrote which one." : ""}`,
+    });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
