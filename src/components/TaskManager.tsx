@@ -89,6 +89,29 @@ const TaskManager = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useLocalStorage<string[]>('studyflow-collapsed-cats', []);
   const [addingForCategory, setAddingForCategory] = useState<TaskCategory | null>(null);
+  const [categoryLabels, setCategoryLabels] = useLocalStorage<Record<string, string>>('studyflow-category-labels', {});
+  const [renamingCategory, setRenamingCategory] = useState<TaskCategory | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  const labelFor = (cat: TaskCategory) => categoryLabels[cat] || cat;
+
+  const startRenameCategory = (cat: TaskCategory) => {
+    setRenamingCategory(cat);
+    setRenameValue(labelFor(cat));
+  };
+
+  const saveRenameCategory = () => {
+    if (!renamingCategory) return;
+    const v = renameValue.trim();
+    setCategoryLabels((prev) => {
+      const next = { ...prev };
+      if (!v || v === renamingCategory) delete next[renamingCategory];
+      else next[renamingCategory] = v;
+      return next;
+    });
+    setRenamingCategory(null);
+    setRenameValue('');
+  };
 
   // Revision topic add form
   const [revTopicTitle, setRevTopicTitle] = useState('');
