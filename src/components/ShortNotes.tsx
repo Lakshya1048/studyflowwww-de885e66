@@ -387,9 +387,9 @@ const ShortNotes = () => {
         {isExtracting ? (
           <><Loader2 className="w-4 h-4 animate-spin" /> Reading PDF{extractProgress ? ` (${extractProgress.p}/${extractProgress.t})` : '...'}</>
         ) : isGenerating ? (
-          <><Loader2 className="w-4 h-4 animate-spin" /> Generating notes...</>
+          <><Loader2 className="w-4 h-4 animate-spin" /> Generating {mode === 'formula' ? 'formula sheet' : 'notes'}...</>
         ) : (
-          <><Sparkles className="w-4 h-4" /> Generate Short Notes</>
+          <><Sparkles className="w-4 h-4" /> Generate {mode === 'formula' ? 'Formula Sheet' : 'Short Notes'}</>
         )}
       </Button>
 
