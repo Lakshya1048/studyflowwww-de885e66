@@ -151,13 +151,14 @@ const ShortNotes = () => {
       if (accumulated.trim()) {
         const saved: SavedNote = {
           id: crypto.randomUUID(),
-          title: chapterFile.name.replace(/\.pdf$/i, ''),
+          title: `${chapterFile.name.replace(/\.pdf$/i, '')}${mode === 'formula' ? ' — Formula Sheet' : ''}`,
           intensity,
+          mode,
           content: accumulated,
           createdAt: new Date().toISOString(),
         };
         setHistory((prev) => [saved, ...prev].slice(0, 30));
-        toast({ title: 'Short notes ready!' });
+        toast({ title: mode === 'formula' ? 'Formula sheet ready!' : 'Short notes ready!' });
       }
     } catch (e) {
       toast({ title: 'Error', description: e instanceof Error ? e.message : 'Unknown', variant: 'destructive' });
