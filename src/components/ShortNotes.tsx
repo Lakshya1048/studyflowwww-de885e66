@@ -36,8 +36,6 @@ const ShortNotes = () => {
   const { toast } = useToast();
   const [chapterFile, setChapterFile] = useState<File | null>(null);
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
-  const [chapterFile, setChapterFile] = useState<File | null>(null);
-  const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [mode, setMode] = useState<Mode>('shortnotes');
   const [intensityIdx, setIntensityIdx] = useState(1); // standard
   const [isExtracting, setIsExtracting] = useState(false);
