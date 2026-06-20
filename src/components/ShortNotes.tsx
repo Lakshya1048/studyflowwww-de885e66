@@ -285,7 +285,7 @@ const ShortNotes = () => {
 
 
       {/* Upload cards */}
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className={`grid ${mode === 'shortnotes' ? 'sm:grid-cols-2' : 'grid-cols-1'} gap-3`}>
         {/* Chapter PDF */}
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Chapter PDF *</p>
