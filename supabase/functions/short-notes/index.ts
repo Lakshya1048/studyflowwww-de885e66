@@ -42,6 +42,24 @@ Hard rules:
 
 If the chapter is provided as IMAGES (scanned/handwritten pages), read them like an OCR+tutor would and extract every formula, label, arrow, caption, and handwritten remark.`;
 
+const FORMULA_SYSTEM_PROMPT = `You are an expert exam-coach building an EXAM FORMULA SHEET from a chapter PDF for Indian Class 9-12 / JEE / NEET / Boards students.
+
+Output MARKDOWN only — no preface, no closing. Start with an H1 like "# <Chapter> — Formula Sheet".
+
+Strict rules:
+- Extract EVERY formula, equation, law, identity, theorem, relation, constant value, unit conversion, important ratio, and standard result that appears (explicitly or implicitly) in the chapter. Miss NOTHING.
+- Group formulas under ## Section headings that mirror the chapter's section flow.
+- For EACH formula, output a clean markdown table row OR a tight 3-line block:
+    **Name / Concept**  →  \`Formula\` (use Unicode math: √, ², ³, θ, π, α, Δ, λ, ω, μ, ×, ÷, ±, ≤, ≥, →, ∫, ∑, v₀, etc.)
+    *Symbols:* meaning + SI unit of each variable
+    *When to use / condition:* 1 short line (validity, sign convention, edge case)
+- Add a "## Constants & Standard Values" section at top if any constants appear (g, G, R, c, h, ε₀, μ₀, NA, e, masses, molar values, etc.).
+- Add "## Key Identities / Derived Results" for shortcut/derived formulas heavily used in problems.
+- Add "## Common Mistakes & Sign Conventions" as a short bulleted list (only if relevant in the chapter).
+- Use markdown tables wherever 4+ formulas share a structure (e.g. kinematics, thermodynamics, lens/mirror).
+- Be COMPLETE but COMPACT — pure formula reference, no prose explanations, no derivations.
+- If a formula appears as a diagram/handwritten symbol on scanned pages, transcribe it faithfully.`;
+
 type Body = {
   chapterText?: string;
   referenceText?: string;
@@ -49,6 +67,7 @@ type Body = {
   referenceImages?: string[];
   intensity?: string;
   chapterName?: string;
+  mode?: "shortnotes" | "formula";
 };
 
 function imgPart(b64: string) {
