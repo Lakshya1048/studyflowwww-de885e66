@@ -19,10 +19,13 @@ const INTENSITY_LIST: { key: Intensity; label: string; desc: string }[] = [
   { key: 'ultra', label: 'Ultra-Detailed Notes', desc: 'Every point compressed' },
 ];
 
+type Mode = 'shortnotes' | 'formula';
+
 type SavedNote = {
   id: string;
   title: string;
   intensity: Intensity;
+  mode?: Mode;
   content: string;
   createdAt: string;
 };
