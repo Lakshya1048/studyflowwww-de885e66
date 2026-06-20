@@ -110,8 +110,8 @@ const Index = () => {
   }
 
   // After onboarding, ask user to pick subjects (one-time)
-  if (subjects.length === 0) {
-    return <SubjectSetup onComplete={(s) => setSubjects(s)} />;
+  if (!subjectsSetupDone && subjects.length === 0) {
+    return <SubjectSetup onComplete={(s) => { setSubjects(s); setSubjectsSetupDone(true); }} />;
   }
 
   return (
