@@ -151,7 +151,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: mode === "formula" ? FORMULA_SYSTEM_PROMPT : SYSTEM_PROMPT },
           { role: "user", content: parts },
         ],
         stream: true,
