@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Upload, Sparkles, Loader2, Trash2, Download, X, BookOpen, FileDown } from 'lucide-react';
+import { FileText, Upload, Sparkles, Loader2, Trash2, Download, X, BookOpen, FileDown, Calculator } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 // @ts-ignore - no types
 import html2pdf from 'html2pdf.js';
@@ -19,10 +19,13 @@ const INTENSITY_LIST: { key: Intensity; label: string; desc: string }[] = [
   { key: 'ultra', label: 'Ultra-Detailed Notes', desc: 'Every point compressed' },
 ];
 
+type Mode = 'shortnotes' | 'formula';
+
 type SavedNote = {
   id: string;
   title: string;
   intensity: Intensity;
+  mode?: Mode;
   content: string;
   createdAt: string;
 };
@@ -33,6 +36,7 @@ const ShortNotes = () => {
   const { toast } = useToast();
   const [chapterFile, setChapterFile] = useState<File | null>(null);
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
+  const [mode, setMode] = useState<Mode>('shortnotes');
   const [intensityIdx, setIntensityIdx] = useState(1); // standard
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractProgress, setExtractProgress] = useState<{ p: number; t: number } | null>(null);
@@ -101,6 +105,7 @@ const ShortNotes = () => {
           referenceText: referenceText || undefined,
           referenceImages: referenceImages.length ? referenceImages : undefined,
           intensity,
+          mode,
           chapterName: chapterFile.name.replace(/\.pdf$/i, ''),
         }),
       });
@@ -146,13 +151,14 @@ const ShortNotes = () => {
       if (accumulated.trim()) {
         const saved: SavedNote = {
           id: crypto.randomUUID(),
-          title: chapterFile.name.replace(/\.pdf$/i, ''),
+          title: `${chapterFile.name.replace(/\.pdf$/i, '')}${mode === 'formula' ? ' — Formula Sheet' : ''}`,
           intensity,
+          mode,
           content: accumulated,
           createdAt: new Date().toISOString(),
         };
         setHistory((prev) => [saved, ...prev].slice(0, 30));
-        toast({ title: 'Short notes ready!' });
+        toast({ title: mode === 'formula' ? 'Formula sheet ready!' : 'Short notes ready!' });
       }
     } catch (e) {
       toast({ title: 'Error', description: e instanceof Error ? e.message : 'Unknown', variant: 'destructive' });
@@ -258,11 +264,28 @@ const ShortNotes = () => {
         <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
           <BookOpen className="w-5 h-5 text-primary" /> Short Notes
         </h2>
-        <p className="text-sm text-muted-foreground">Upload a chapter PDF — get exam-ready short notes instantly.</p>
+        <p className="text-sm text-muted-foreground">Upload a chapter PDF — get exam-ready short notes or a complete formula sheet.</p>
       </div>
 
+      {/* Mode toggle */}
+      <div className="grid grid-cols-2 gap-2 p-1 rounded-xl border border-border bg-card">
+        <button
+          onClick={() => setMode('shortnotes')}
+          className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'shortnotes' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          <BookOpen className="w-4 h-4" /> Short Notes
+        </button>
+        <button
+          onClick={() => setMode('formula')}
+          className={`flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${mode === 'formula' ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+        >
+          <Calculator className="w-4 h-4" /> Formula Sheet
+        </button>
+      </div>
+
+
       {/* Upload cards */}
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className={`grid ${mode === 'shortnotes' ? 'sm:grid-cols-2' : 'grid-cols-1'} gap-3`}>
         {/* Chapter PDF */}
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Chapter PDF *</p>
@@ -298,7 +321,8 @@ const ShortNotes = () => {
           />
         </div>
 
-        {/* Reference PDF */}
+        {/* Reference PDF (short notes mode only) */}
+        {mode === 'shortnotes' && (
         <div className="rounded-xl border border-border bg-card p-4">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Reference Style PDF (optional)</p>
           {referenceFile ? (
@@ -332,9 +356,11 @@ const ShortNotes = () => {
             }}
           />
         </div>
+        )}
       </div>
 
-      {/* Intensity slider */}
+      {/* Intensity slider (short notes mode only) */}
+      {mode === 'shortnotes' && (
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-semibold text-foreground">Notes Intensity</p>
@@ -355,14 +381,15 @@ const ShortNotes = () => {
           ))}
         </div>
       </div>
+      )}
 
       <Button onClick={generate} disabled={!chapterFile || isExtracting || isGenerating} className="w-full gap-2">
         {isExtracting ? (
           <><Loader2 className="w-4 h-4 animate-spin" /> Reading PDF{extractProgress ? ` (${extractProgress.p}/${extractProgress.t})` : '...'}</>
         ) : isGenerating ? (
-          <><Loader2 className="w-4 h-4 animate-spin" /> Generating notes...</>
+          <><Loader2 className="w-4 h-4 animate-spin" /> Generating {mode === 'formula' ? 'formula sheet' : 'notes'}...</>
         ) : (
-          <><Sparkles className="w-4 h-4" /> Generate Short Notes</>
+          <><Sparkles className="w-4 h-4" /> Generate {mode === 'formula' ? 'Formula Sheet' : 'Short Notes'}</>
         )}
       </Button>
 

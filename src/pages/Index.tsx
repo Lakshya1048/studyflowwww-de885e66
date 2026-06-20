@@ -10,6 +10,7 @@ import DoubtSolver from '@/components/DoubtSolver';
 import ShortNotes from '@/components/ShortNotes';
 import SettingsPanel from '@/components/SettingsPanel';
 import OnboardingScreen from '@/components/OnboardingScreen';
+import SubjectSetup from '@/components/SubjectSetup';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import BadgeToast from '@/components/BadgeToast';
 import FloatingTimer from '@/components/FloatingTimer';
@@ -33,6 +34,7 @@ const Index = () => {
   const [sessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [onboardingDone, setOnboardingDone] = useLocalStorage<boolean>('studyflow-onboarding-done', false);
+  const [subjects, setSubjects] = useLocalStorage<string[]>('studyflow-subjects', []);
   const [appSettings] = useLocalStorage<AppSettings>('studyflow-settings', DEFAULT_SETTINGS);
 
   // Apply compact mode on mount
@@ -104,6 +106,11 @@ const Index = () => {
   // Show onboarding for first-time users
   if (!onboardingDone) {
     return <OnboardingScreen onComplete={() => setOnboardingDone(true)} />;
+  }
+
+  // After onboarding, ask user to pick subjects (one-time)
+  if (subjects.length === 0) {
+    return <SubjectSetup onComplete={(s) => setSubjects(s)} />;
   }
 
   return (

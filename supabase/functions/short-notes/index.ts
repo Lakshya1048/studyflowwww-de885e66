@@ -42,6 +42,24 @@ Hard rules:
 
 If the chapter is provided as IMAGES (scanned/handwritten pages), read them like an OCR+tutor would and extract every formula, label, arrow, caption, and handwritten remark.`;
 
+const FORMULA_SYSTEM_PROMPT = `You are an expert exam-coach building an EXAM FORMULA SHEET from a chapter PDF for Indian Class 9-12 / JEE / NEET / Boards students.
+
+Output MARKDOWN only — no preface, no closing. Start with an H1 like "# <Chapter> — Formula Sheet".
+
+Strict rules:
+- Extract EVERY formula, equation, law, identity, theorem, relation, constant value, unit conversion, important ratio, and standard result that appears (explicitly or implicitly) in the chapter. Miss NOTHING.
+- Group formulas under ## Section headings that mirror the chapter's section flow.
+- For EACH formula, output a clean markdown table row OR a tight 3-line block:
+    **Name / Concept**  →  \`Formula\` (use Unicode math: √, ², ³, θ, π, α, Δ, λ, ω, μ, ×, ÷, ±, ≤, ≥, →, ∫, ∑, v₀, etc.)
+    *Symbols:* meaning + SI unit of each variable
+    *When to use / condition:* 1 short line (validity, sign convention, edge case)
+- Add a "## Constants & Standard Values" section at top if any constants appear (g, G, R, c, h, ε₀, μ₀, NA, e, masses, molar values, etc.).
+- Add "## Key Identities / Derived Results" for shortcut/derived formulas heavily used in problems.
+- Add "## Common Mistakes & Sign Conventions" as a short bulleted list (only if relevant in the chapter).
+- Use markdown tables wherever 4+ formulas share a structure (e.g. kinematics, thermodynamics, lens/mirror).
+- Be COMPLETE but COMPACT — pure formula reference, no prose explanations, no derivations.
+- If a formula appears as a diagram/handwritten symbol on scanned pages, transcribe it faithfully.`;
+
 type Body = {
   chapterText?: string;
   referenceText?: string;
@@ -49,6 +67,7 @@ type Body = {
   referenceImages?: string[];
   intensity?: string;
   chapterName?: string;
+  mode?: "shortnotes" | "formula";
 };
 
 function imgPart(b64: string) {
@@ -79,6 +98,7 @@ serve(async (req) => {
       });
     }
 
+    const mode = body.mode === "formula" ? "formula" : "shortnotes";
     const intensityKey = intensity && intensity in INTENSITY_GUIDE ? intensity : "standard";
     const intensityInstr = INTENSITY_GUIDE[intensityKey];
 
@@ -90,14 +110,17 @@ serve(async (req) => {
     // Build multimodal user content
     const parts: unknown[] = [];
 
-    let intro = `Generate exam-oriented short notes for the following chapter${chapterName ? ` ("${chapterName}")` : ""}.\n\nINTENSITY: ${intensityInstr}`;
+    let intro =
+      mode === "formula"
+        ? `Build a COMPLETE formula sheet for the following chapter${chapterName ? ` ("${chapterName}")` : ""}. Extract every formula, law, constant and standard result from the source. Do not include long explanations — pure formula reference.`
+        : `Generate exam-oriented short notes for the following chapter${chapterName ? ` ("${chapterName}")` : ""}.\n\nINTENSITY: ${intensityInstr}`;
     parts.push({ type: "text", text: intro });
 
-    if (referenceImages && referenceImages.length > 0) {
+    if (mode === "shortnotes" && referenceImages && referenceImages.length > 0) {
       parts.push({ type: "text", text: `\n--- REFERENCE STYLE SAMPLE (handwritten/scanned — CLONE its exact format, structure, symbols, arrows, abbreviations, heading style, bullet style, density and flow. ONLY content changes, style MUST match.) ---` });
       for (const img of referenceImages) parts.push(imgPart(img));
       parts.push({ type: "text", text: `--- END REFERENCE IMAGES ---` });
-    } else if (ref) {
+    } else if (mode === "shortnotes" && ref) {
       parts.push({ type: "text", text: `\n--- REFERENCE STYLE SAMPLE (CLONE its exact format/structure, ONLY content changes) ---\n${ref}\n--- END REFERENCE ---` });
     }
 
@@ -110,8 +133,14 @@ serve(async (req) => {
       parts.push({ type: "text", text: `\n--- CHAPTER SOURCE TEXT ---\n${chap}\n--- END CHAPTER ---` });
     }
 
-    const hasRef = !!(referenceImages?.length || ref);
-    parts.push({ type: "text", text: `\nNow output the complete short notes in Markdown.${hasRef ? " REMEMBER: the format/style MUST visually mirror the reference sample exactly — same headings, bullets, arrows, abbreviations, layout pattern and density. The student should not be able to tell who wrote which one." : ""}` });
+    const hasRef = mode === "shortnotes" && !!(referenceImages?.length || ref);
+    parts.push({
+      type: "text",
+      text:
+        mode === "formula"
+          ? `\nNow output the COMPLETE formula sheet in Markdown. Cover EVERY formula and constant from the chapter. No prose — only formula reference style.`
+          : `\nNow output the complete short notes in Markdown.${hasRef ? " REMEMBER: the format/style MUST visually mirror the reference sample exactly — same headings, bullets, arrows, abbreviations, layout pattern and density. The student should not be able to tell who wrote which one." : ""}`,
+    });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -122,7 +151,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-pro",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: mode === "formula" ? FORMULA_SYSTEM_PROMPT : SYSTEM_PROMPT },
           { role: "user", content: parts },
         ],
         stream: true,
