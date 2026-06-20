@@ -108,6 +108,11 @@ const Index = () => {
     return <OnboardingScreen onComplete={() => setOnboardingDone(true)} />;
   }
 
+  // After onboarding, ask user to pick subjects (one-time)
+  if (subjects.length === 0) {
+    return <SubjectSetup onComplete={(s) => setSubjects(s)} />;
+  }
+
   return (
     <>
       <OfflineIndicator />
