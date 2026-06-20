@@ -105,6 +105,7 @@ const ShortNotes = () => {
           referenceText: referenceText || undefined,
           referenceImages: referenceImages.length ? referenceImages : undefined,
           intensity,
+          mode,
           chapterName: chapterFile.name.replace(/\.pdf$/i, ''),
         }),
       });
