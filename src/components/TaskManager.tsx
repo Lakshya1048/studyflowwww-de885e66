@@ -429,7 +429,7 @@ const TaskManager = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {TASK_CATEGORIES.map((c) => (
-                        <SelectItem key={c} value={c}>{categoryEmojis[c]} {c}</SelectItem>
+                        <SelectItem key={c} value={c}>{categoryEmojis[c]} {labelFor(c)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
