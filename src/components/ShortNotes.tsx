@@ -356,9 +356,11 @@ const ShortNotes = () => {
             }}
           />
         </div>
+        )}
       </div>
 
-      {/* Intensity slider */}
+      {/* Intensity slider (short notes mode only) */}
+      {mode === 'shortnotes' && (
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-semibold text-foreground">Notes Intensity</p>
@@ -379,6 +381,7 @@ const ShortNotes = () => {
           ))}
         </div>
       </div>
+      )}
 
       <Button onClick={generate} disabled={!chapterFile || isExtracting || isGenerating} className="w-full gap-2">
         {isExtracting ? (
