@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { GraduationCap, Plus, X, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface SubjectSetupProps {
   onComplete: (subjects: string[]) => void;
@@ -41,6 +40,9 @@ const SubjectSetup = ({ onComplete }: SubjectSetupProps) => {
 
   const finish = () => {
     if (subjects.length === 0) return;
+    try {
+      localStorage.setItem('studyflow-subjects-setup-done', 'true');
+    } catch {}
     onComplete(subjects);
   };
 
@@ -64,14 +66,15 @@ const SubjectSetup = ({ onComplete }: SubjectSetupProps) => {
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
               Class / Exam
             </label>
-            <Select value={preset} onValueChange={applyPreset}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {Object.keys(PRESETS).map((k) => (
-                  <SelectItem key={k} value={k}>{k}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <select
+              value={preset}
+              onChange={(e) => applyPreset(e.target.value)}
+              className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              {Object.keys(PRESETS).map((k) => (
+                <option key={k} value={k}>{k}</option>
+              ))}
+            </select>
           </div>
 
           <div>

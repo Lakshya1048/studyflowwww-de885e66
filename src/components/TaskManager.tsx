@@ -89,6 +89,29 @@ const TaskManager = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useLocalStorage<string[]>('studyflow-collapsed-cats', []);
   const [addingForCategory, setAddingForCategory] = useState<TaskCategory | null>(null);
+  const [categoryLabels, setCategoryLabels] = useLocalStorage<Record<string, string>>('studyflow-category-labels', {});
+  const [renamingCategory, setRenamingCategory] = useState<TaskCategory | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  const labelFor = (cat: TaskCategory) => categoryLabels[cat] || cat;
+
+  const startRenameCategory = (cat: TaskCategory) => {
+    setRenamingCategory(cat);
+    setRenameValue(labelFor(cat));
+  };
+
+  const saveRenameCategory = () => {
+    if (!renamingCategory) return;
+    const v = renameValue.trim();
+    setCategoryLabels((prev) => {
+      const next = { ...prev };
+      if (!v || v === renamingCategory) delete next[renamingCategory];
+      else next[renamingCategory] = v;
+      return next;
+    });
+    setRenamingCategory(null);
+    setRenameValue('');
+  };
 
   // Revision topic add form
   const [revTopicTitle, setRevTopicTitle] = useState('');
@@ -406,7 +429,7 @@ const TaskManager = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {TASK_CATEGORIES.map((c) => (
-                        <SelectItem key={c} value={c}>{categoryEmojis[c]} {c}</SelectItem>
+                        <SelectItem key={c} value={c}>{categoryEmojis[c]} {labelFor(c)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -478,32 +501,57 @@ const TaskManager = () => {
             return (
               <div key={cat} className="rounded-xl border border-border overflow-hidden">
                 {/* Category header */}
-                <button
-                  onClick={() => toggleCategoryCollapse(cat)}
-                  className="w-full flex items-center justify-between px-4 py-3 bg-card hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-2">
+                <div className="w-full flex items-center justify-between px-4 py-3 bg-card hover:bg-muted/50 transition-colors">
+                  <div
+                    className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
+                    onClick={() => renamingCategory !== cat && toggleCategoryCollapse(cat)}
+                  >
                     <span className="text-base">{categoryEmojis[cat]}</span>
-                    <span className="text-sm font-semibold text-foreground">{cat}</span>
-                    {total > 0 && (
+                    {renamingCategory === cat ? (
+                      <Input
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveRenameCategory();
+                          if (e.key === 'Escape') { setRenamingCategory(null); setRenameValue(''); }
+                        }}
+                        onBlur={saveRenameCategory}
+                        className="h-7 text-sm font-semibold py-0 px-2 max-w-[180px]"
+                      />
+                    ) : (
+                      <span className="text-sm font-semibold text-foreground truncate">{labelFor(cat)}</span>
+                    )}
+                    {total > 0 && renamingCategory !== cat && (
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${categoryColors[cat]}`}>
                         {pending.length}/{total}
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        startAdd(cat);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); startRenameCategory(cat); }}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      title="Rename"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); startAdd(cat); }}
                       className="p-1 rounded-md text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />
                     </button>
-                    {isCollapsed ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronUp className="w-4 h-4 text-muted-foreground" />}
+                    <button
+                      onClick={() => toggleCategoryCollapse(cat)}
+                      className="p-1 rounded-md text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                    </button>
                   </div>
-                </button>
+                </div>
+
 
                 {/* Category tasks */}
                 <AnimatePresence>
