@@ -10,6 +10,7 @@ import DoubtSolver from '@/components/DoubtSolver';
 import ShortNotes from '@/components/ShortNotes';
 import SettingsPanel from '@/components/SettingsPanel';
 import OnboardingScreen from '@/components/OnboardingScreen';
+import SubjectSetup from '@/components/SubjectSetup';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import BadgeToast from '@/components/BadgeToast';
 import FloatingTimer from '@/components/FloatingTimer';
