@@ -161,7 +161,7 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
     toast({ title: 'Study data cleared' });
   };
 
-  const BACKUP_KEYS = ['studyflow-tasks', 'studyflow-sessions', 'studyflow-revisions', 'studyflow-task-minutes', 'studyflow-profile', 'studyflow-settings', 'studyflow-subjects', 'studyflow-subjects-setup-done'];
+  const BACKUP_KEYS = ['studyflow-tasks', 'studyflow-sessions', 'studyflow-revisions', 'studyflow-task-minutes', 'studyflow-profile', 'studyflow-settings', 'studyflow-subjects', 'studyflow-subjects-setup-done', 'studyflow-wallet', 'studyflow-transactions', 'studyflow-titles-owned', 'studyflow-title-equipped', 'studyflow-inventory-boxes', 'studyflow-inventory-powerups', 'studyflow-active-powerups', 'studyflow-box-rewards', 'studyflow-shop-badges', 'studyflow-shop-decorations', 'studyflow-shop-discounts', 'studyflow-highest-rank', 'studyflow-rewarded-sessions', 'studyflow-rewarded-tasks'];
 
   const exportData = () => {
     const data: Record<string, unknown> = {};
