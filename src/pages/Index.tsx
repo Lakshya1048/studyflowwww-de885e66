@@ -159,7 +159,7 @@ const Index = () => {
 
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-2xl mx-auto p-6 pt-20 md:pt-6 pb-24 md:pb-6">
-            {activeTab !== 'doubts' && activeTab !== 'pdfs' && activeTab !== 'shortnotes' && renderContent()}
+            {activeTab !== 'doubts' && activeTab !== 'pdfs' && activeTab !== 'shortnotes' && activeTab !== 'shop' && renderContent()}
             <div className={activeTab === 'pdfs' ? '' : 'hidden'}>
               <PdfManager />
             </div>
@@ -169,6 +169,7 @@ const Index = () => {
             <div className={activeTab === 'shortnotes' ? '' : 'hidden'}>
               <ShortNotes />
             </div>
+            {activeTab === 'shop' && <Shop />}
           </div>
         </main>
       </div>
