@@ -196,6 +196,7 @@ const TaskManager = () => {
       createdAt: new Date().toISOString(),
       needsRevision,
       category,
+      difficulty,
     };
     setTasks((prev) => [task, ...prev]);
     resetForm();
