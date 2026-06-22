@@ -12,6 +12,7 @@ import {
   DialogFooter, DialogDescription
 } from '@/components/ui/dialog';
 import { saveFolderHandle, loadFolderHandle } from '@/lib/folderDb';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 // Module-level persistence — survives re-renders and effect chains
 let _savedDirHandle: FileSystemDirectoryHandle | null = null;
@@ -22,6 +23,7 @@ let _restoredFromIdb = false;
 
 const PdfManager = () => {
   const [subjects, _setSubjects] = useState<string[]>(_savedSubjects);
+  const [savedSubjects, setSavedSubjects] = useLocalStorage<string[]>('studyflow-subjects', []);
   const [activeSubject, _setActiveSubject] = useState<string | null>(_savedActiveSubject);
   // path = nested folder names BELOW the active subject
   const [path, _setPath] = useState<string[]>(_savedPath);
@@ -128,6 +130,9 @@ const PdfManager = () => {
     setLoading(true);
     setError('');
     try {
+      for (const subjectName of savedSubjects) {
+        await dirHandle.getDirectoryHandle(subjectName, { create: true });
+      }
       const list: string[] = [];
       for await (const entry of (dirHandle as any).values()) {
         if (entry.kind === 'directory') list.push(entry.name);
@@ -139,7 +144,7 @@ const PdfManager = () => {
       setError('Could not load subjects.');
     }
     setLoading(false);
-  }, [dirHandle, setSubjects, setActiveSubject]);
+  }, [dirHandle, savedSubjects, setSubjects, setActiveSubject]);
 
   // Load folders + pdfs at current location
   const loadContents = useCallback(async () => {
@@ -186,6 +191,7 @@ const PdfManager = () => {
       setNewSubjectName('');
       setShowNewSubject(false);
       await loadSubjects();
+      setSavedSubjects((prev) => prev.includes(name) ? prev : [...prev, name]);
       setActiveSubject(name);
       setPath([]);
     } catch {
