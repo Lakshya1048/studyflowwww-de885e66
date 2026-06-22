@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Target, Save, Moon, Sun, Trash2, Bell, BellOff, Clock, Volume2, VolumeX, Shield, Palette, Info, Download, Upload, HelpCircle } from 'lucide-react';
+import { X, User, Target, Save, Moon, Sun, Trash2, Bell, BellOff, Clock, Volume2, VolumeX, Shield, Palette, Info, Download, Upload, HelpCircle, BookOpen, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -105,6 +105,8 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
   const [goalMinutes, setGoalMinutes] = useState(profile?.daily_goal_minutes ?? 60);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [settings, setSettings] = useLocalStorage<AppSettings>('studyflow-settings', DEFAULT_SETTINGS);
+  const [subjects, setSubjects] = useLocalStorage<string[]>('studyflow-subjects', []);
+  const [newSubjectName, setNewSubjectName] = useState('');
 
   useEffect(() => {
     if (profile) {
@@ -139,6 +141,17 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
     onClose();
   };
 
+  const addSubject = () => {
+    const name = newSubjectName.trim();
+    if (!name || subjects.includes(name)) return;
+    setSubjects((prev) => [...prev, name]);
+    setNewSubjectName('');
+  };
+
+  const removeSubject = (name: string) => {
+    setSubjects((prev) => prev.filter((subject) => subject !== name));
+  };
+
   const clearStudyData = () => {
     if (!confirm('Clear all local study data (tasks, sessions, timer)? This cannot be undone.')) return;
     ['studyflow-tasks', 'studyflow-sessions', 'studyflow-timer-end', 'studyflow-timer-subject',
@@ -148,7 +161,7 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
     toast({ title: 'Study data cleared' });
   };
 
-  const BACKUP_KEYS = ['studyflow-tasks', 'studyflow-sessions', 'studyflow-revisions', 'studyflow-task-minutes', 'studyflow-profile', 'studyflow-settings'];
+  const BACKUP_KEYS = ['studyflow-tasks', 'studyflow-sessions', 'studyflow-revisions', 'studyflow-task-minutes', 'studyflow-profile', 'studyflow-settings', 'studyflow-subjects', 'studyflow-subjects-setup-done'];
 
   const exportData = () => {
     const data: Record<string, unknown> = {};
