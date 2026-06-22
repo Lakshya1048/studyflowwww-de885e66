@@ -86,6 +86,7 @@ const TaskManager = () => {
   const [dueDate, setDueDate] = useState('');
   const [needsRevision, setNeedsRevision] = useState(false);
   const [category, setCategory] = useState<TaskCategory>('Self Study');
+  const [difficulty, setDifficulty] = useState<TaskDifficulty>('medium');
   const [selectedDate, setSelectedDate] = useState(() => getLocalDateStr());
   const [activeView, setActiveView] = useState<'tasks' | 'overdue' | 'revision'>('tasks');
   const [searchQuery, setSearchQuery] = useState('');
