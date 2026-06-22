@@ -164,6 +164,7 @@ const TaskManager = () => {
     setDueDate(task.dueDate);
     setNeedsRevision(task.needsRevision || false);
     setCategory(task.category || 'Self Study');
+    setDifficulty(task.difficulty || 'medium');
     setShowAdd(true);
   };
 
