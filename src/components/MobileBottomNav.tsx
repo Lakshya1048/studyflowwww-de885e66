@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { LayoutDashboard, CheckSquare, Timer, FileText, MessageCircleQuestion, BarChart3, CalendarDays, BookOpen } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Timer, FileText, MessageCircleQuestion, BarChart3, CalendarDays, BookOpen, ShoppingBag } from 'lucide-react';
 import type { TabId } from '@/lib/types';
 
 interface MobileBottomNavProps {
@@ -14,6 +14,7 @@ const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'pdfs', label: 'PDFs', icon: FileText },
   { id: 'shortnotes', label: 'Notes', icon: BookOpen },
+  { id: 'shop', label: 'Shop', icon: ShoppingBag },
   { id: 'doubts', label: 'AI', icon: MessageCircleQuestion },
   { id: 'progress', label: 'Stats', icon: BarChart3 },
 ];
