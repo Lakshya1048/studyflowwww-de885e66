@@ -28,7 +28,7 @@ interface RevisionTopic {
   createdAt: string;
 }
 
-const SUBJECTS = ['English', 'Math', 'Physics', 'Chemistry', 'AI', 'IP', 'Other'];
+const DEFAULT_SUBJECTS = ['English', 'Math', 'Physics', 'Chemistry', 'Biology', 'AI', 'IP'];
 
 const getLocalDateStr = (date: Date = new Date()) => {
   const y = date.getFullYear();
@@ -74,6 +74,7 @@ const getSubjectStyle = (subject: string) =>
 
 const TaskManager = () => {
   const [tasks, setTasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
+  const [savedSubjects] = useLocalStorage<string[]>('studyflow-subjects', []);
   const [revisions, setRevisions] = useLocalStorage<RevisionItem[]>('studyflow-revisions', []);
   const [revisionTopics, setRevisionTopics] = useLocalStorage<RevisionTopic[]>('studyflow-revision-topics', []);
   const [showAdd, setShowAdd] = useState(false);
@@ -92,6 +93,12 @@ const TaskManager = () => {
   const [categoryLabels, setCategoryLabels] = useLocalStorage<Record<string, string>>('studyflow-category-labels', {});
   const [renamingCategory, setRenamingCategory] = useState<TaskCategory | null>(null);
   const [renameValue, setRenameValue] = useState('');
+
+  const subjectOptions = useMemo(() => {
+    const setupSubjects = savedSubjects.length > 0 ? savedSubjects : DEFAULT_SUBJECTS;
+    const existingSubjects = [...tasks.map((t) => t.subject), ...revisionTopics.map((t) => t.subject)];
+    return Array.from(new Set([...setupSubjects, ...existingSubjects].filter(Boolean)));
+  }, [savedSubjects, tasks, revisionTopics]);
 
   const labelFor = (cat: TaskCategory) => categoryLabels[cat] || cat;
 
@@ -143,7 +150,7 @@ const TaskManager = () => {
   const startEdit = (task: StudyTask) => {
     setEditingTask(task);
     setTitle(task.title);
-    const isPreset = SUBJECTS.includes(task.subject);
+    const isPreset = subjectOptions.includes(task.subject);
     if (isPreset) {
       setSubject(task.subject);
       setCustomSubject('');
@@ -268,7 +275,7 @@ const TaskManager = () => {
   const startEditTopic = (topic: RevisionTopic) => {
     setEditingTopic(topic);
     setRevTopicTitle(topic.title);
-    const isPreset = SUBJECTS.includes(topic.subject);
+    const isPreset = subjectOptions.includes(topic.subject);
     if (isPreset) {
       setRevTopicSubject(topic.subject);
       setRevTopicCustomSubject('');
@@ -418,9 +425,10 @@ const TaskManager = () => {
                       <SelectValue placeholder="Subject" />
                     </SelectTrigger>
                     <SelectContent>
-                      {SUBJECTS.map((s) => (
+                      {subjectOptions.map((s) => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
+                      {!subjectOptions.includes('Other') && <SelectItem value="Other">Other</SelectItem>}
                     </SelectContent>
                   </Select>
                   <Select value={category} onValueChange={(v) => setCategory(v as TaskCategory)}>
@@ -632,9 +640,10 @@ const TaskManager = () => {
                   <SelectValue placeholder="Subject" />
                 </SelectTrigger>
                 <SelectContent>
-                  {SUBJECTS.map((s) => (
+                  {subjectOptions.map((s) => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
+                  {!subjectOptions.includes('Other') && <SelectItem value="Other">Other</SelectItem>}
                 </SelectContent>
               </Select>
               <Button size="sm" onClick={addRevisionTopic} className="h-9 px-3">

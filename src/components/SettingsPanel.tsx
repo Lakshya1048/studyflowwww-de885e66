@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Target, Save, Moon, Sun, Trash2, Bell, BellOff, Clock, Volume2, VolumeX, Shield, Palette, Info, Download, Upload, HelpCircle } from 'lucide-react';
+import { X, User, Target, Save, Moon, Sun, Trash2, Bell, BellOff, Clock, Volume2, VolumeX, Shield, Palette, Info, Download, Upload, HelpCircle, BookOpen, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -105,6 +105,8 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
   const [goalMinutes, setGoalMinutes] = useState(profile?.daily_goal_minutes ?? 60);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const [settings, setSettings] = useLocalStorage<AppSettings>('studyflow-settings', DEFAULT_SETTINGS);
+  const [subjects, setSubjects] = useLocalStorage<string[]>('studyflow-subjects', []);
+  const [newSubjectName, setNewSubjectName] = useState('');
 
   useEffect(() => {
     if (profile) {
@@ -139,6 +141,17 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
     onClose();
   };
 
+  const addSubject = () => {
+    const name = newSubjectName.trim();
+    if (!name || subjects.includes(name)) return;
+    setSubjects((prev) => [...prev, name]);
+    setNewSubjectName('');
+  };
+
+  const removeSubject = (name: string) => {
+    setSubjects((prev) => prev.filter((subject) => subject !== name));
+  };
+
   const clearStudyData = () => {
     if (!confirm('Clear all local study data (tasks, sessions, timer)? This cannot be undone.')) return;
     ['studyflow-tasks', 'studyflow-sessions', 'studyflow-timer-end', 'studyflow-timer-subject',
@@ -148,7 +161,7 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
     toast({ title: 'Study data cleared' });
   };
 
-  const BACKUP_KEYS = ['studyflow-tasks', 'studyflow-sessions', 'studyflow-revisions', 'studyflow-task-minutes', 'studyflow-profile', 'studyflow-settings'];
+  const BACKUP_KEYS = ['studyflow-tasks', 'studyflow-sessions', 'studyflow-revisions', 'studyflow-task-minutes', 'studyflow-profile', 'studyflow-settings', 'studyflow-subjects', 'studyflow-subjects-setup-done'];
 
   const exportData = () => {
     const data: Record<string, unknown> = {};
@@ -256,6 +269,40 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
                     ))}
                   </div>
                   <Input type="number" min={10} max={480} value={goalMinutes} onChange={(e) => setGoalMinutes(Number(e.target.value))} />
+                </div>
+              </section>
+
+              {/* Subjects */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <BookOpen className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Subjects</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2 rounded-lg border border-border bg-muted/40 p-2 min-h-[44px]">
+                    {subjects.length === 0 ? (
+                      <span className="text-xs text-muted-foreground px-1 py-1">No subjects selected</span>
+                    ) : subjects.map((subject) => (
+                      <span key={subject} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                        {subject}
+                        <button onClick={() => removeSubject(subject)} className="hover:text-destructive" type="button">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newSubjectName}
+                      onChange={(e) => setNewSubjectName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addSubject()}
+                      placeholder="Add subject"
+                      className="flex-1"
+                    />
+                    <Button type="button" variant="outline" size="icon" onClick={addSubject}>
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </section>
 

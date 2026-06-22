@@ -17,16 +17,21 @@ interface NoteItem {
   updatedAt: string;
 }
 
-const SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'History', 'Computer Science', 'General'];
+const DEFAULT_SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'History', 'Computer Science'];
 
 const NotesManager = () => {
   const [items, setItems] = useLocalStorage<NoteItem[]>('studyflow-notes', []);
+  const [savedSubjects] = useLocalStorage<string[]>('studyflow-subjects', []);
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [showAddFolder, setShowAddFolder] = useState(false);
   const [showAddNote, setShowAddNote] = useState(false);
   const [newName, setNewName] = useState('');
-  const [newSubject, setNewSubject] = useState(SUBJECTS[0]);
+  const subjectOptions = Array.from(new Set([
+    ...(savedSubjects.length > 0 ? savedSubjects : DEFAULT_SUBJECTS),
+    ...items.map((item) => item.subject).filter(Boolean),
+  ]));
+  const [newSubject, setNewSubject] = useState(subjectOptions[0] || 'General');
   const [noteContent, setNoteContent] = useState('');
   const [editContent, setEditContent] = useState('');
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -172,7 +177,7 @@ const NotesManager = () => {
                 onChange={(e) => setNewSubject(e.target.value)}
                 className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
-                {SUBJECTS.map((s) => (
+                {subjectOptions.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
