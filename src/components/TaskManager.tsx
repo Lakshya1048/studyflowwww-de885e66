@@ -455,6 +455,21 @@ const TaskManager = () => {
                   />
                 )}
                 <Input type="date" value={dueDate || selectedDate} onChange={(e) => setDueDate(e.target.value)} />
+                <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-muted/50">
+                  <span className="text-xs font-medium text-foreground">Difficulty</span>
+                  <div className="flex gap-1">
+                    {(['easy', 'medium', 'hard'] as TaskDifficulty[]).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setDifficulty(d)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium capitalize transition-colors ${difficulty === d ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                      >
+                        {d} · 🪙{TASK_COIN_REWARDS[d]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2">
                     <RotateCcw className="w-3.5 h-3.5 text-primary" />
