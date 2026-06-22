@@ -119,6 +119,7 @@ const Index = () => {
     <>
       <OfflineIndicator />
       <BadgeToast badge={gamification.newBadge} onDismiss={gamification.dismissNewBadge} />
+      <RankUnlockBanner />
       <SettingsPanel
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
