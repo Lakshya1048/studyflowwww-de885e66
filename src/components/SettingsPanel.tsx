@@ -248,6 +248,15 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
                 </div>
               </section>
 
+              {/* Wallet & Inventory */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Wallet className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Wallet & Inventory</h3>
+                </div>
+                <WalletInventory />
+              </section>
+
               {/* Study goals */}
               <section>
                 <div className="flex items-center gap-2 mb-3">
