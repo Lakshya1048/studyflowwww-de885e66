@@ -31,7 +31,13 @@ const navItems: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'shortnotes', label: 'Short Notes', icon: BookOpen },
   { id: 'doubts', label: 'Doubt Solver', icon: MessageCircleQuestion },
   { id: 'progress', label: 'Progress', icon: BarChart3 },
+  { id: 'shop', label: 'Shop', icon: ShoppingBag },
 ];
+
+const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile, gamification }: SidebarProps) => {
+  const [collapsed, setCollapsed] = useState(false);
+  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const eco = useEconomy();
 
 const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile, gamification }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
