@@ -39,9 +39,6 @@ const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile, gami
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
   const eco = useEconomy();
 
-const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile, gamification }: SidebarProps) => {
-  const [collapsed, setCollapsed] = useState(false);
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
 
   const toggleTheme = () => {
     document.documentElement.classList.toggle('dark');
