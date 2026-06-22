@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import type { StudyTask, TaskCategory } from '@/lib/types';
+import type { StudyTask, TaskCategory, TaskDifficulty } from '@/lib/types';
 import { TASK_CATEGORIES } from '@/lib/types';
+import { TASK_COIN_REWARDS } from '@/lib/economy';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 // RevisionItem type kept for backward compat but no longer auto-created
