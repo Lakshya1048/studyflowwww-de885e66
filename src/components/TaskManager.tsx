@@ -137,6 +137,7 @@ const TaskManager = () => {
     setDueDate('');
     setNeedsRevision(false);
     setCategory('Self Study');
+    setDifficulty('medium');
     setEditingTask(null);
     setShowAdd(false);
     setAddingForCategory(null);
