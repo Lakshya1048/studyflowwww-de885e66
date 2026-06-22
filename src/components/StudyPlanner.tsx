@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Clock, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,13 +6,18 @@ import { Input } from '@/components/ui/input';
 import type { TimeSlot } from '@/lib/types';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
-const SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'History', 'Computer Science', 'Other'];
+const DEFAULT_SUBJECTS = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'History', 'Computer Science'];
 
 const StudyPlanner = () => {
   const today = new Date().toISOString().split('T')[0];
   const [slots, setSlots] = useLocalStorage<TimeSlot[]>(`studyflow-plan-${today}`, []);
+  const [savedSubjects] = useLocalStorage<string[]>('studyflow-subjects', []);
   const [showAdd, setShowAdd] = useState(false);
-  const [newSubject, setNewSubject] = useState(SUBJECTS[0]);
+  const subjectOptions = useMemo(() => Array.from(new Set([
+    ...(savedSubjects.length > 0 ? savedSubjects : DEFAULT_SUBJECTS),
+    ...slots.map((slot) => slot.subject),
+  ].filter(Boolean))), [savedSubjects, slots]);
+  const [newSubject, setNewSubject] = useState(subjectOptions[0] || 'General');
   const [startTime, setStartTime] = useState('09:00');
   const [endTime, setEndTime] = useState('10:00');
 
@@ -69,7 +74,7 @@ const StudyPlanner = () => {
                   onChange={(e) => setNewSubject(e.target.value)}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
-                  {SUBJECTS.map((s) => (
+                  {subjectOptions.map((s) => (
                     <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
