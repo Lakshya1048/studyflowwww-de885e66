@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import type { StudyTask, TaskCategory } from '@/lib/types';
+import type { StudyTask, TaskCategory, TaskDifficulty } from '@/lib/types';
 import { TASK_CATEGORIES } from '@/lib/types';
+import { TASK_COIN_REWARDS } from '@/lib/economy';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 
 // RevisionItem type kept for backward compat but no longer auto-created
@@ -85,6 +86,7 @@ const TaskManager = () => {
   const [dueDate, setDueDate] = useState('');
   const [needsRevision, setNeedsRevision] = useState(false);
   const [category, setCategory] = useState<TaskCategory>('Self Study');
+  const [difficulty, setDifficulty] = useState<TaskDifficulty>('medium');
   const [selectedDate, setSelectedDate] = useState(() => getLocalDateStr());
   const [activeView, setActiveView] = useState<'tasks' | 'overdue' | 'revision'>('tasks');
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,6 +137,7 @@ const TaskManager = () => {
     setDueDate('');
     setNeedsRevision(false);
     setCategory('Self Study');
+    setDifficulty('medium');
     setEditingTask(null);
     setShowAdd(false);
     setAddingForCategory(null);
@@ -161,6 +164,7 @@ const TaskManager = () => {
     setDueDate(task.dueDate);
     setNeedsRevision(task.needsRevision || false);
     setCategory(task.category || 'Self Study');
+    setDifficulty(task.difficulty || 'medium');
     setShowAdd(true);
   };
 
@@ -192,6 +196,7 @@ const TaskManager = () => {
       createdAt: new Date().toISOString(),
       needsRevision,
       category,
+      difficulty,
     };
     setTasks((prev) => [task, ...prev]);
     resetForm();
@@ -203,7 +208,7 @@ const TaskManager = () => {
     setTasks((prev) =>
       prev.map((t) =>
         t.id === editingTask.id
-          ? { ...t, title: title.trim(), subject: resolvedSubject, dueDate: dueDate || t.dueDate, needsRevision, category }
+          ? { ...t, title: title.trim(), subject: resolvedSubject, dueDate: dueDate || t.dueDate, needsRevision, category, difficulty }
           : t
       )
     );
@@ -450,6 +455,21 @@ const TaskManager = () => {
                   />
                 )}
                 <Input type="date" value={dueDate || selectedDate} onChange={(e) => setDueDate(e.target.value)} />
+                <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-muted/50">
+                  <span className="text-xs font-medium text-foreground">Difficulty</span>
+                  <div className="flex gap-1">
+                    {(['easy', 'medium', 'hard'] as TaskDifficulty[]).map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setDifficulty(d)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium capitalize transition-colors ${difficulty === d ? 'bg-primary text-primary-foreground' : 'bg-background text-muted-foreground hover:bg-muted'}`}
+                      >
+                        {d} · 🪙{TASK_COIN_REWARDS[d]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
                   <div className="flex items-center gap-2">
                     <RotateCcw className="w-3.5 h-3.5 text-primary" />

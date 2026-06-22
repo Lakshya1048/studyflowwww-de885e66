@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckSquare, Timer, BarChart3, LayoutDashboard, Moon, Sun, MessageCircleQuestion, FileText, Settings, User, CalendarDays, BookOpen } from 'lucide-react';
+import { CheckSquare, Timer, BarChart3, LayoutDashboard, Moon, Sun, MessageCircleQuestion, FileText, Settings, User, CalendarDays, BookOpen, ShoppingBag, Coins } from 'lucide-react';
 import type { TabId, StreakData } from '@/lib/types';
 import type { Profile } from '@/hooks/useProfile';
 import type { RankInfo } from '@/hooks/useGamification';
 import GamificationCard from '@/components/GamificationCard';
+import { useEconomy } from '@/hooks/useEconomy';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -30,11 +31,14 @@ const navItems: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: 'shortnotes', label: 'Short Notes', icon: BookOpen },
   { id: 'doubts', label: 'Doubt Solver', icon: MessageCircleQuestion },
   { id: 'progress', label: 'Progress', icon: BarChart3 },
+  { id: 'shop', label: 'Shop', icon: ShoppingBag },
 ];
 
 const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile, gamification }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState(false);
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
+  const eco = useEconomy();
+
 
   const toggleTheme = () => {
     document.documentElement.classList.toggle('dark');
@@ -86,6 +90,14 @@ const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile, gami
         })}
       </nav>
 
+      {/* Coin pill */}
+      {!collapsed && (
+        <button onClick={() => onTabChange('shop')} className="mx-3 mb-2 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 text-amber-600 dark:text-amber-400 px-3 py-2 flex items-center justify-between transition-colors">
+          <span className="flex items-center gap-1.5 text-sm font-semibold"><Coins className="w-4 h-4" /> {eco.wallet.balance.toLocaleString()}</span>
+          <span className="text-[10px] uppercase tracking-wide opacity-80">Shop</span>
+        </button>
+      )}
+
       {/* User + Settings */}
       <button
         onClick={onOpenSettings}
@@ -96,8 +108,11 @@ const Sidebar = ({ activeTab, onTabChange, streak, onOpenSettings, profile, gami
         </div>
         {!collapsed && (
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-xs font-semibold text-sidebar-foreground truncate">{profile?.display_name || 'My Account'}</p>
-            <p className="text-xs text-muted-foreground">Settings</p>
+            <p className="text-xs font-semibold text-sidebar-foreground truncate">
+              {profile?.display_name || 'My Account'}
+              {eco.equippedTitleDef && <span className="ml-1 text-[10px] text-amber-600 dark:text-amber-400">{eco.equippedTitleDef.emoji} {eco.equippedTitleDef.name}</span>}
+            </p>
+            <p className="text-xs text-muted-foreground">{eco.currentRank.icon} {eco.currentRank.name}</p>
           </div>
         )}
         {!collapsed && <Settings className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />}

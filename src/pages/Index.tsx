@@ -8,6 +8,7 @@ import ProgressTracker from '@/components/ProgressTracker';
 import CalendarView from '@/components/CalendarView';
 import DoubtSolver from '@/components/DoubtSolver';
 import ShortNotes from '@/components/ShortNotes';
+import Shop, { RankUnlockBanner } from '@/components/Shop';
 import SettingsPanel from '@/components/SettingsPanel';
 import OnboardingScreen from '@/components/OnboardingScreen';
 import SubjectSetup from '@/components/SubjectSetup';
@@ -118,6 +119,7 @@ const Index = () => {
     <>
       <OfflineIndicator />
       <BadgeToast badge={gamification.newBadge} onDismiss={gamification.dismissNewBadge} />
+      <RankUnlockBanner />
       <SettingsPanel
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
@@ -158,7 +160,7 @@ const Index = () => {
 
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-2xl mx-auto p-6 pt-20 md:pt-6 pb-24 md:pb-6">
-            {activeTab !== 'doubts' && activeTab !== 'pdfs' && activeTab !== 'shortnotes' && renderContent()}
+            {activeTab !== 'doubts' && activeTab !== 'pdfs' && activeTab !== 'shortnotes' && activeTab !== 'shop' && renderContent()}
             <div className={activeTab === 'pdfs' ? '' : 'hidden'}>
               <PdfManager />
             </div>
@@ -168,6 +170,7 @@ const Index = () => {
             <div className={activeTab === 'shortnotes' ? '' : 'hidden'}>
               <ShortNotes />
             </div>
+            {activeTab === 'shop' && <Shop />}
           </div>
         </main>
       </div>

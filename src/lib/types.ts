@@ -2,6 +2,8 @@ export type TaskCategory = 'Coaching' | 'Arjuna Batch' | 'School' | 'Self Study'
 
 export const TASK_CATEGORIES: TaskCategory[] = ['Coaching', 'Arjuna Batch', 'School', 'Self Study'];
 
+export type TaskDifficulty = 'easy' | 'medium' | 'hard';
+
 export interface StudyTask {
   id: string;
   title: string;
@@ -11,6 +13,7 @@ export interface StudyTask {
   createdAt: string;
   needsRevision?: boolean;
   category?: TaskCategory;
+  difficulty?: TaskDifficulty;
 }
 
 export interface TimeSlot {
@@ -41,4 +44,4 @@ export interface StreakData {
   totalTasksCompleted: number;
 }
 
-export type TabId = 'dashboard' | 'tasks' | 'timer' | 'progress' | 'notes' | 'pdfs' | 'doubts' | 'calendar' | 'shortnotes';
+export type TabId = 'dashboard' | 'tasks' | 'timer' | 'progress' | 'notes' | 'pdfs' | 'doubts' | 'calendar' | 'shortnotes' | 'shop';

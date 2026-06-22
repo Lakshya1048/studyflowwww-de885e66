@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Target, Save, Moon, Sun, Trash2, Bell, BellOff, Clock, Volume2, VolumeX, Shield, Palette, Info, Download, Upload, HelpCircle, BookOpen, Plus } from 'lucide-react';
+import { X, User, Target, Save, Moon, Sun, Trash2, Bell, BellOff, Clock, Volume2, VolumeX, Shield, Palette, Info, Download, Upload, HelpCircle, BookOpen, Plus, Wallet } from 'lucide-react';
+import WalletInventory from '@/components/WalletInventory';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -161,7 +162,7 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
     toast({ title: 'Study data cleared' });
   };
 
-  const BACKUP_KEYS = ['studyflow-tasks', 'studyflow-sessions', 'studyflow-revisions', 'studyflow-task-minutes', 'studyflow-profile', 'studyflow-settings', 'studyflow-subjects', 'studyflow-subjects-setup-done'];
+  const BACKUP_KEYS = ['studyflow-tasks', 'studyflow-sessions', 'studyflow-revisions', 'studyflow-task-minutes', 'studyflow-profile', 'studyflow-settings', 'studyflow-subjects', 'studyflow-subjects-setup-done', 'studyflow-wallet', 'studyflow-transactions', 'studyflow-titles-owned', 'studyflow-title-equipped', 'studyflow-inventory-boxes', 'studyflow-inventory-powerups', 'studyflow-active-powerups', 'studyflow-box-rewards', 'studyflow-shop-badges', 'studyflow-shop-decorations', 'studyflow-shop-discounts', 'studyflow-highest-rank', 'studyflow-rewarded-sessions', 'studyflow-rewarded-tasks'];
 
   const exportData = () => {
     const data: Record<string, unknown> = {};
@@ -245,6 +246,15 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
                   <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
                   <p className="text-xs text-muted-foreground">Shown in greeting on dashboard</p>
                 </div>
+              </section>
+
+              {/* Wallet & Inventory */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <Wallet className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Wallet & Inventory</h3>
+                </div>
+                <WalletInventory />
               </section>
 
               {/* Study goals */}
