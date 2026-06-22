@@ -272,6 +272,40 @@ const SettingsPanel = ({ open, onClose, profile, onUpdateProfile }: SettingsPane
                 </div>
               </section>
 
+              {/* Subjects */}
+              <section>
+                <div className="flex items-center gap-2 mb-3">
+                  <BookOpen className="w-4 h-4 text-primary" />
+                  <h3 className="text-sm font-semibold text-foreground">Subjects</h3>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2 rounded-lg border border-border bg-muted/40 p-2 min-h-[44px]">
+                    {subjects.length === 0 ? (
+                      <span className="text-xs text-muted-foreground px-1 py-1">No subjects selected</span>
+                    ) : subjects.map((subject) => (
+                      <span key={subject} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                        {subject}
+                        <button onClick={() => removeSubject(subject)} className="hover:text-destructive" type="button">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newSubjectName}
+                      onChange={(e) => setNewSubjectName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && addSubject()}
+                      placeholder="Add subject"
+                      className="flex-1"
+                    />
+                    <Button type="button" variant="outline" size="icon" onClick={addSubject}>
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </section>
+
               {/* Notifications */}
               <section>
                 <div className="flex items-center gap-2 mb-3">
