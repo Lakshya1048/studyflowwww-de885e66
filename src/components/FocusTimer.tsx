@@ -43,6 +43,7 @@ const SAVE_INTERVAL_MS = 30_000; // save progress every 30 seconds
 const FocusTimer = () => {
   const [sessions, setSessions] = useLocalStorage<StudySession[]>('studyflow-sessions', []);
   const [tasks] = useLocalStorage<StudyTask[]>('studyflow-tasks', []);
+  const [savedSubjects] = useLocalStorage<string[]>('studyflow-subjects', []);
   const [focusDuration, setFocusDuration] = useLocalStorage<number>('studyflow-focus-duration', 25);
   const [breakDuration, setBreakDuration] = useLocalStorage<number>('studyflow-break-duration', 5);
   const [subject, setSubject] = useLocalStorage<string>('studyflow-timer-subject', '');
@@ -466,9 +467,9 @@ const FocusTimer = () => {
           )}
 
           {!taskModeEnabled && (() => {
-            const DEFAULT_SUBJECTS = ['English', 'Math', 'Physics', 'Chemistry', 'Biology', 'AI', 'IP', 'Other'];
+            const DEFAULT_SUBJECTS = ['English', 'Math', 'Physics', 'Chemistry', 'Biology', 'AI', 'IP'];
             const knownSubjects = Array.from(new Set([
-              ...DEFAULT_SUBJECTS,
+              ...(savedSubjects.length > 0 ? savedSubjects : DEFAULT_SUBJECTS),
               ...sessions.map((s) => s.subject),
               ...tasks.map((t) => t.subject),
             ].filter(Boolean)));
@@ -615,9 +616,9 @@ const FocusTimer = () => {
         </div>
 
         {showLogPast && (() => {
-          const DEFAULT_SUBJECTS = ['English', 'Math', 'Physics', 'Chemistry', 'AI', 'IP', 'Other'];
+          const DEFAULT_SUBJECTS = ['English', 'Math', 'Physics', 'Chemistry', 'Biology', 'AI', 'IP'];
           const knownSubjects = Array.from(new Set([
-            ...DEFAULT_SUBJECTS,
+            ...(savedSubjects.length > 0 ? savedSubjects : DEFAULT_SUBJECTS),
             ...sessions.map((s) => s.subject),
             ...tasks.map((t) => t.subject),
           ].filter(Boolean)));
