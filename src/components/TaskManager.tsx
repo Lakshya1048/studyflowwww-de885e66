@@ -208,7 +208,7 @@ const TaskManager = () => {
     setTasks((prev) =>
       prev.map((t) =>
         t.id === editingTask.id
-          ? { ...t, title: title.trim(), subject: resolvedSubject, dueDate: dueDate || t.dueDate, needsRevision, category }
+          ? { ...t, title: title.trim(), subject: resolvedSubject, dueDate: dueDate || t.dueDate, needsRevision, category, difficulty }
           : t
       )
     );
