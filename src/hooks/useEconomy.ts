@@ -87,12 +87,9 @@ export function useEconomy() {
       const flooredMins = Math.floor(s.duration);
       if (flooredMins > already) {
         const delta = flooredMins - already;
-        const mult = studyCoinMultiplier(activeRef.current) * generalCoinMultiplier(activeRef.current) / generalCoinMultiplier(activeRef.current); // study only
-        // Apply study + general
-        const earned = Math.round(delta * studyCoinMultiplier(activeRef.current) * generalCoinMultiplier(activeRef.current));
+        const earned = Math.round(delta * studyCoinMultiplier(activeRef.current));
         pendingCoins += earned;
         updates[s.id] = flooredMins;
-        void mult;
       }
     }
     if (Object.keys(updates).length > 0) {
