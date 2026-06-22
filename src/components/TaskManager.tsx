@@ -428,7 +428,7 @@ const TaskManager = () => {
                       {subjectOptions.map((s) => (
                         <SelectItem key={s} value={s}>{s}</SelectItem>
                       ))}
-                      <SelectItem value="Other">Other</SelectItem>
+                      {!subjectOptions.includes('Other') && <SelectItem value="Other">Other</SelectItem>}
                     </SelectContent>
                   </Select>
                   <Select value={category} onValueChange={(v) => setCategory(v as TaskCategory)}>
@@ -643,7 +643,7 @@ const TaskManager = () => {
                   {subjectOptions.map((s) => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
-                  <SelectItem value="Other">Other</SelectItem>
+                  {!subjectOptions.includes('Other') && <SelectItem value="Other">Other</SelectItem>}
                 </SelectContent>
               </Select>
               <Button size="sm" onClick={addRevisionTopic} className="h-9 px-3">
