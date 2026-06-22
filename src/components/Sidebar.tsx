@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckSquare, Timer, BarChart3, LayoutDashboard, Moon, Sun, MessageCircleQuestion, FileText, Settings, User, CalendarDays, BookOpen } from 'lucide-react';
+import { CheckSquare, Timer, BarChart3, LayoutDashboard, Moon, Sun, MessageCircleQuestion, FileText, Settings, User, CalendarDays, BookOpen, ShoppingBag, Coins } from 'lucide-react';
 import type { TabId, StreakData } from '@/lib/types';
 import type { Profile } from '@/hooks/useProfile';
 import type { RankInfo } from '@/hooks/useGamification';
 import GamificationCard from '@/components/GamificationCard';
+import { useEconomy } from '@/hooks/useEconomy';
 
 interface SidebarProps {
   activeTab: TabId;
