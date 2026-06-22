@@ -8,6 +8,7 @@ import ProgressTracker from '@/components/ProgressTracker';
 import CalendarView from '@/components/CalendarView';
 import DoubtSolver from '@/components/DoubtSolver';
 import ShortNotes from '@/components/ShortNotes';
+import Shop, { RankUnlockBanner } from '@/components/Shop';
 import SettingsPanel from '@/components/SettingsPanel';
 import OnboardingScreen from '@/components/OnboardingScreen';
 import SubjectSetup from '@/components/SubjectSetup';
