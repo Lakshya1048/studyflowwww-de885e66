@@ -2,14 +2,12 @@ import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Upload, Sparkles, Loader2, Trash2, Download, X, BookOpen, FileDown, Calculator } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-// @ts-ignore - no types
-import html2pdf from 'html2pdf.js';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { extractPdfText, extractPdfPagesAsImages } from '@/lib/pdfExtract';
-import NotesRenderer from './NotesRenderer';
+import NotesRenderer, { parseNotes } from './NotesRenderer';
 
 // Print-only renderer: parses card sections from markdown and emits styled divs that html2pdf can paginate.
 function PdfCardsRender({ markdown }: { markdown: string }) {
