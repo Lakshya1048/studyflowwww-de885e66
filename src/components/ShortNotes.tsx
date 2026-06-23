@@ -11,6 +11,65 @@ import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { extractPdfText, extractPdfPagesAsImages } from '@/lib/pdfExtract';
 import NotesRenderer from './NotesRenderer';
 
+// Print-only renderer: parses card sections from markdown and emits styled divs that html2pdf can paginate.
+function PdfCardsRender({ markdown }: { markdown: string }) {
+  const lines = (markdown || '').split(/\r?\n/);
+  let hero: string | null = null;
+  type S = { kind: string; title: string; body: string };
+  const sections: S[] = [];
+  let cur: S | null = null;
+  const buf: string[] = [];
+  const flush = () => { if (cur) { cur.body = buf.join('\n').trim(); sections.push(cur); buf.length = 0; } };
+  const classify = (t: string): string => {
+    if (/last\s*minute|revision|🏆/i.test(t)) return 'revision';
+    if (/formula|🧮/i.test(t)) return 'formula';
+    if (/comparison|vs\.?\b|📊/i.test(t)) return 'comparison';
+    if (/quick\s*fact|fact|⚡|💡|📌/i.test(t)) return 'quickfact';
+    if (/exception|mistake|⚠️|❗/i.test(t)) return 'exception';
+    if (/trick|mnemonic|memory|🧠/i.test(t)) return 'trick';
+    if (/reaction|🧪|⚗️/i.test(t)) return 'reaction';
+    if (/\blaw\b|principle|theorem|📜/i.test(t)) return 'law';
+    if (/definition|defn|📖/i.test(t)) return 'definition';
+    return 'concept';
+  };
+  for (const line of lines) {
+    const h1 = line.match(/^#\s+(.+)$/);
+    const h2 = line.match(/^##\s+(.+)$/);
+    if (h1 && !hero && sections.length === 0 && !cur) { hero = h1[1].trim(); continue; }
+    if (h2) { flush(); cur = { kind: classify(h2[1]), title: h2[1].trim(), body: '' }; continue; }
+    if (cur) buf.push(line);
+    else if (line.trim()) { cur = { kind: 'concept', title: 'Overview', body: '' }; buf.push(line); }
+  }
+  flush();
+  const labelMap: Record<string,string> = { concept:'Concept', formula:'Formula', comparison:'Comparison', quickfact:'Quick Fact', exception:'Exception', trick:'Memory Trick', revision:'Last-Minute Revision', reaction:'Reaction', law:'Law / Principle', definition:'Definition' };
+  const revision = sections.filter((s) => s.kind === 'revision');
+  const rest = sections.filter((s) => s.kind !== 'revision');
+  const renderCard = (s: S, i: number) => (
+    <div key={i} className={`pdf-card k-${s.kind}`}>
+      <div className="pdf-card-label">{labelMap[s.kind] || 'Section'}</div>
+      <div className="pdf-card-title">{s.title.replace(/^[^\p{L}\p{N}]+/u, '')}</div>
+      <ReactMarkdown>{s.body}</ReactMarkdown>
+    </div>
+  );
+  return (
+    <div>
+      {hero && (
+        <div className="pdf-hero">
+          <div className="pdf-hero-eyebrow">Chapter</div>
+          <h1>{hero}</h1>
+        </div>
+      )}
+      <div className="pdf-grid">{rest.map(renderCard)}</div>
+      {revision.length > 0 && (
+        <>
+          <div className="pdf-revision-title">🏆 Last-Minute Revision</div>
+          <div>{revision.map(renderCard)}</div>
+        </>
+      )}
+    </div>
+  );
+}
+
 type Intensity = 'quick' | 'standard' | 'detailed' | 'ultra';
 
 const INTENSITY_LIST: { key: Intensity; label: string; desc: string }[] = [
