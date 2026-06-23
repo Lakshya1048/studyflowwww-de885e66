@@ -489,7 +489,7 @@ const ShortNotes = () => {
             <p className="text-sm font-semibold text-foreground">Generated Notes</p>
             {generated && !isGenerating && (
               <div className="flex gap-2">
-                <Button size="sm" onClick={() => downloadPdf({ title: chapterFile?.name.replace(/\.pdf$/i, '') || 'notes', content: generated })} className="gap-1.5">
+                <Button size="sm" onClick={() => downloadPdf({ title: chapterFile?.name.replace(/\.pdf$/i, '') || 'notes', content: generated, mode })} className="gap-1.5">
                   <FileDown className="w-3.5 h-3.5" /> PDF
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => download({ title: chapterFile?.name.replace(/\.pdf$/i, '') || 'notes', content: generated })} className="gap-1.5">
