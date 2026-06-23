@@ -2,52 +2,33 @@ import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Upload, Sparkles, Loader2, Trash2, Download, X, BookOpen, FileDown, Calculator } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-// @ts-ignore - no types
-import html2pdf from 'html2pdf.js';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { extractPdfText, extractPdfPagesAsImages } from '@/lib/pdfExtract';
-import NotesRenderer from './NotesRenderer';
+import NotesRenderer, { parseNotes } from './NotesRenderer';
 
-// Print-only renderer: parses card sections from markdown and emits styled divs that html2pdf can paginate.
+// Print-only renderer: builds clean light-mode card markup the html2canvas exporter can capture.
+const PDF_KIND_LABEL: Record<string, string> = {
+  concept: 'Concept', formula: 'Formula', comparison: 'Comparison',
+  quickfact: 'Quick Fact', exception: 'Exception', trick: 'Memory Trick',
+  revision: 'Last-Minute Revision', reaction: 'Reaction', law: 'Law / Principle',
+  definition: 'Definition', generic: 'Section',
+};
+
+function cleanPdfTitle(t: string) {
+  return t.replace(/^[^\p{L}\p{N}]+/u, '').replace(/^(Concept|Formula|Comparison|Quick\s*Fact|Exception|Memory\s*Trick|Last[-\s]*Minute\s*Revision|Reaction|Law|Definition)\s*[—\-:]\s*/i, '');
+}
+
 function PdfCardsRender({ markdown }: { markdown: string }) {
-  const lines = (markdown || '').split(/\r?\n/);
-  let hero: string | null = null;
-  type S = { kind: string; title: string; body: string };
-  const sections: S[] = [];
-  let cur: S | null = null;
-  const buf: string[] = [];
-  const flush = () => { if (cur) { cur.body = buf.join('\n').trim(); sections.push(cur); buf.length = 0; } };
-  const classify = (t: string): string => {
-    if (/last\s*minute|revision|🏆/i.test(t)) return 'revision';
-    if (/formula|🧮/i.test(t)) return 'formula';
-    if (/comparison|vs\.?\b|📊/i.test(t)) return 'comparison';
-    if (/quick\s*fact|fact|⚡|💡|📌/i.test(t)) return 'quickfact';
-    if (/exception|mistake|⚠️|❗/i.test(t)) return 'exception';
-    if (/trick|mnemonic|memory|🧠/i.test(t)) return 'trick';
-    if (/reaction|🧪|⚗️/i.test(t)) return 'reaction';
-    if (/\blaw\b|principle|theorem|📜/i.test(t)) return 'law';
-    if (/definition|defn|📖/i.test(t)) return 'definition';
-    return 'concept';
-  };
-  for (const line of lines) {
-    const h1 = line.match(/^#\s+(.+)$/);
-    const h2 = line.match(/^##\s+(.+)$/);
-    if (h1 && !hero && sections.length === 0 && !cur) { hero = h1[1].trim(); continue; }
-    if (h2) { flush(); cur = { kind: classify(h2[1]), title: h2[1].trim(), body: '' }; continue; }
-    if (cur) buf.push(line);
-    else if (line.trim()) { cur = { kind: 'concept', title: 'Overview', body: '' }; buf.push(line); }
-  }
-  flush();
-  const labelMap: Record<string,string> = { concept:'Concept', formula:'Formula', comparison:'Comparison', quickfact:'Quick Fact', exception:'Exception', trick:'Memory Trick', revision:'Last-Minute Revision', reaction:'Reaction', law:'Law / Principle', definition:'Definition' };
+  const { hero, sections } = parseNotes(markdown);
   const revision = sections.filter((s) => s.kind === 'revision');
   const rest = sections.filter((s) => s.kind !== 'revision');
-  const renderCard = (s: S, i: number) => (
+  const renderCard = (s: { kind: string; title: string; body: string }, i: number) => (
     <div key={i} className={`pdf-card k-${s.kind}`}>
-      <div className="pdf-card-label">{labelMap[s.kind] || 'Section'}</div>
-      <div className="pdf-card-title">{s.title.replace(/^[^\p{L}\p{N}]+/u, '')}</div>
+      <div className="pdf-card-label">{PDF_KIND_LABEL[s.kind] || 'Section'}</div>
+      <div className="pdf-card-title">{cleanPdfTitle(s.title)}</div>
       <ReactMarkdown>{s.body}</ReactMarkdown>
     </div>
   );
@@ -63,7 +44,7 @@ function PdfCardsRender({ markdown }: { markdown: string }) {
       {revision.length > 0 && (
         <>
           <div className="pdf-revision-title">🏆 Last-Minute Revision</div>
-          <div>{revision.map(renderCard)}</div>
+          <div className="pdf-grid">{revision.map(renderCard)}</div>
         </>
       )}
     </div>
@@ -239,46 +220,68 @@ const ShortNotes = () => {
 
   const downloadPdf = async (note: { title: string; content: string; mode?: Mode }) => {
     const isFormula = note.mode === 'formula';
-    const { default: ReactDOM } = await import('react-dom/client');
+    const [{ default: ReactDOM }, { default: jsPDF }, { default: html2canvas }] = await Promise.all([
+      import('react-dom/client'),
+      import('jspdf'),
+      import('html2canvas-pro'),
+    ]);
+
+    // Mount visible (offscreen) so html2canvas captures correctly.
     const container = document.createElement('div');
-    container.style.cssText = 'position:fixed;left:-99999px;top:0;width:820px;background:#ffffff;color:#0f172a;padding:36px 40px;font-family:Georgia,"Times New Roman",serif;font-size:13px;line-height:1.5;';
     container.className = 'short-notes-pdf-export';
+    container.style.cssText = [
+      'position:absolute',
+      'top:0',
+      'left:0',
+      'transform:translateX(-200vw)',
+      'width:794px', // ~A4 @ 96dpi
+      'background:#ffffff',
+      'color:#0f172a',
+      'padding:32px 36px',
+      'font-family:Georgia,"Times New Roman",serif',
+      'font-size:13px',
+      'line-height:1.5',
+      'z-index:0',
+    ].join(';');
     document.body.appendChild(container);
 
     const root = ReactDOM.createRoot(container);
     root.render(
       <div style={{ color: '#0f172a' }}>
         <style>{`
+          .short-notes-pdf-export *{box-sizing:border-box;color:#0f172a;}
           .short-notes-pdf-export h1{font-size:22px;font-weight:800;border-bottom:2px solid #0f172a;padding-bottom:6px;margin:0 0 14px;}
           .short-notes-pdf-export h2{font-size:16px;font-weight:700;color:#1e3a8a;margin:14px 0 6px;}
           .short-notes-pdf-export h3{font-size:14px;font-weight:700;color:#334155;margin:10px 0 4px;}
           .short-notes-pdf-export p{margin:4px 0;}
-          .short-notes-pdf-export ul,.short-notes-pdf-export ol{margin:4px 0 4px 22px;}
+          .short-notes-pdf-export ul,.short-notes-pdf-export ol{margin:4px 0 4px 22px;padding-left:4px;}
           .short-notes-pdf-export li{margin:2px 0;}
-          .short-notes-pdf-export strong{color:#7c2d12;}
+          .short-notes-pdf-export strong{color:#7c2d12;font-weight:700;}
+          .short-notes-pdf-export em{color:#475569;}
           .short-notes-pdf-export blockquote{border-left:3px solid #f59e0b;background:#fffbeb;padding:5px 10px;margin:6px 0;color:#78350f;font-style:italic;}
-          .short-notes-pdf-export table{border-collapse:collapse;width:100%;margin:6px 0;font-size:12px;}
-          .short-notes-pdf-export th,.short-notes-pdf-export td{border:1px solid #cbd5e1;padding:4px 7px;text-align:left;vertical-align:top;}
-          .short-notes-pdf-export th{background:#e2e8f0;font-weight:700;}
+          .short-notes-pdf-export table{border-collapse:collapse;width:100%;margin:6px 0;font-size:11.5px;table-layout:fixed;}
+          .short-notes-pdf-export th,.short-notes-pdf-export td{border:1px solid #cbd5e1;padding:5px 7px;text-align:left;vertical-align:top;word-wrap:break-word;}
+          .short-notes-pdf-export th{background:#e2e8f0;font-weight:700;color:#0f172a;}
           .short-notes-pdf-export code{background:#f1f5f9;padding:1px 4px;border-radius:3px;font-size:12px;}
-          .short-notes-pdf-export .pdf-card{break-inside:avoid;page-break-inside:avoid;border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;margin:8px 0;background:#ffffff;}
-          .short-notes-pdf-export .pdf-card .pdf-card-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;font-weight:700;}
-          .short-notes-pdf-export .pdf-card .pdf-card-title{font-size:14px;font-weight:800;color:#0f172a;margin:0 0 4px;}
-          .short-notes-pdf-export .pdf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-          .short-notes-pdf-export .pdf-card.k-formula{background:#f5f3ff;border-left:4px solid #7c3aed;}
-          .short-notes-pdf-export .pdf-card.k-concept{background:#eff6ff;border-left:4px solid #2563eb;}
-          .short-notes-pdf-export .pdf-card.k-definition{background:#f0f9ff;border-left:4px solid #0ea5e9;}
-          .short-notes-pdf-export .pdf-card.k-law{background:#eef2ff;border-left:4px solid #4f46e5;}
-          .short-notes-pdf-export .pdf-card.k-reaction{background:#fff7ed;border-left:4px solid #ea580c;}
-          .short-notes-pdf-export .pdf-card.k-comparison{background:#ecfeff;border-left:4px solid #06b6d4;}
-          .short-notes-pdf-export .pdf-card.k-quickfact{background:#fffbeb;border-left:4px solid #f59e0b;}
-          .short-notes-pdf-export .pdf-card.k-exception{background:#fff1f2;border-left:4px solid #f43f5e;}
-          .short-notes-pdf-export .pdf-card.k-trick{background:#fdf4ff;border-left:4px solid #d946ef;}
-          .short-notes-pdf-export .pdf-card.k-revision{background:#ecfdf5;border-left:4px solid #10b981;}
+          .short-notes-pdf-export .pdf-card{break-inside:avoid;page-break-inside:avoid;border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;margin:0;background:#ffffff;}
+          .short-notes-pdf-export .pdf-card .pdf-card-label{display:inline-block;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;font-weight:800;background:#f1f5f9;padding:2px 6px;border-radius:4px;margin-bottom:6px;}
+          .short-notes-pdf-export .pdf-card .pdf-card-title{font-size:14px;font-weight:800;color:#0f172a;margin:0 0 6px;line-height:1.3;}
+          .short-notes-pdf-export .pdf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+          .short-notes-pdf-export .pdf-card.k-formula{background:#f5f3ff;border-left:5px solid #7c3aed;}
+          .short-notes-pdf-export .pdf-card.k-concept{background:#eff6ff;border-left:5px solid #2563eb;}
+          .short-notes-pdf-export .pdf-card.k-definition{background:#f0f9ff;border-left:5px solid #0ea5e9;}
+          .short-notes-pdf-export .pdf-card.k-law{background:#eef2ff;border-left:5px solid #4f46e5;}
+          .short-notes-pdf-export .pdf-card.k-reaction{background:#fff7ed;border-left:5px solid #ea580c;}
+          .short-notes-pdf-export .pdf-card.k-comparison{background:#ecfeff;border-left:5px solid #06b6d4;}
+          .short-notes-pdf-export .pdf-card.k-quickfact{background:#fffbeb;border-left:5px solid #f59e0b;}
+          .short-notes-pdf-export .pdf-card.k-exception{background:#fff1f2;border-left:5px solid #f43f5e;}
+          .short-notes-pdf-export .pdf-card.k-trick{background:#fdf4ff;border-left:5px solid #d946ef;}
+          .short-notes-pdf-export .pdf-card.k-revision{background:#ecfdf5;border-left:5px solid #10b981;}
+          .short-notes-pdf-export .pdf-card.k-generic{background:#f8fafc;border-left:5px solid #94a3b8;}
           .short-notes-pdf-export .pdf-hero{border:1px solid #cbd5e1;border-radius:12px;padding:14px 16px;margin-bottom:12px;background:linear-gradient(135deg,#eff6ff,#ffffff);}
           .short-notes-pdf-export .pdf-hero .pdf-hero-eyebrow{font-size:10px;letter-spacing:.2em;color:#2563eb;font-weight:700;text-transform:uppercase;}
           .short-notes-pdf-export .pdf-hero h1{border:none;margin:4px 0 0;padding:0;font-size:24px;}
-          .short-notes-pdf-export .pdf-revision-title{display:flex;align-items:center;gap:6px;font-size:16px;font-weight:800;color:#065f46;margin:14px 0 6px;border-top:2px dashed #10b981;padding-top:8px;}
+          .short-notes-pdf-export .pdf-revision-title{font-size:16px;font-weight:800;color:#065f46;margin:14px 0 8px;border-top:2px dashed #10b981;padding-top:8px;}
         `}</style>
         {isFormula ? (
           <ReactMarkdown>{note.content}</ReactMarkdown>
@@ -288,25 +291,67 @@ const ShortNotes = () => {
       </div>
     );
 
-    await new Promise((r) => setTimeout(r, 300));
+    // Wait for React commit + fonts + paint
+    await new Promise((r) => setTimeout(r, 350));
+    try { if ((document as any).fonts?.ready) await (document as any).fonts.ready; } catch {}
+    await new Promise((r) => requestAnimationFrame(() => r(null)));
 
     try {
-      await (html2pdf() as any)
-        .set({
-          margin: [8, 8, 10, 8],
-          filename: `${note.title} - short notes.pdf`,
-          image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['css', 'legacy'], avoid: '.pdf-card' },
-        })
-        .from(container)
-        .save();
+      const canvas = await html2canvas(container, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+        windowWidth: 794,
+        width: 794,
+        height: container.scrollHeight,
+      });
+
+      const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+      const pageW = pdf.internal.pageSize.getWidth();   // 210
+      const pageH = pdf.internal.pageSize.getHeight();  // 297
+      const margin = 6;
+      const imgW = pageW - margin * 2;
+      const imgH = (canvas.height * imgW) / canvas.width;
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+      if (imgH <= pageH - margin * 2) {
+        pdf.addImage(imgData, 'JPEG', margin, margin, imgW, imgH);
+      } else {
+        // Slice canvas into A4-height chunks to avoid blanks & preserve layout.
+        const pxPerMm = canvas.width / imgW;
+        const pageContentHpx = Math.floor((pageH - margin * 2) * pxPerMm);
+        const slice = document.createElement('canvas');
+        const ctx = slice.getContext('2d')!;
+        slice.width = canvas.width;
+        slice.height = pageContentHpx;
+        let offsetY = 0;
+        let first = true;
+        while (offsetY < canvas.height) {
+          const sliceH = Math.min(pageContentHpx, canvas.height - offsetY);
+          slice.height = sliceH;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, slice.width, sliceH);
+          ctx.drawImage(canvas, 0, offsetY, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+          const sliceData = slice.toDataURL('image/jpeg', 0.92);
+          const sliceHmm = (sliceH * imgW) / canvas.width;
+          if (!first) pdf.addPage();
+          pdf.addImage(sliceData, 'JPEG', margin, margin, imgW, sliceHmm);
+          offsetY += sliceH;
+          first = false;
+        }
+      }
+
+      pdf.save(`${note.title} - short notes.pdf`);
+    } catch (e) {
+      console.error('PDF export failed:', e);
+      toast({ title: 'PDF export failed', description: e instanceof Error ? e.message : 'Try again', variant: 'destructive' });
     } finally {
       root.unmount();
       container.remove();
     }
   };
+
 
 
   const deleteNote = (id: string) => {
