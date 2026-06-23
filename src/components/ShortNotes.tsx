@@ -252,9 +252,13 @@ const ShortNotes = () => {
             </Button>
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-5 prose prose-sm dark:prose-invert max-w-none prose-headings:font-display prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-table:text-foreground">
-          <ReactMarkdown>{viewing.content}</ReactMarkdown>
-        </div>
+        {viewing.mode === 'formula' ? (
+          <div className="rounded-xl border border-border bg-card p-5 prose prose-sm dark:prose-invert max-w-none prose-headings:font-display prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-table:text-foreground">
+            <ReactMarkdown>{viewing.content}</ReactMarkdown>
+          </div>
+        ) : (
+          <NotesRenderer markdown={viewing.content} />
+        )}
       </div>
     );
   }
