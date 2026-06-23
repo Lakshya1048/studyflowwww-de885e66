@@ -178,47 +178,68 @@ const ShortNotes = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const downloadPdf = async (note: { title: string; content: string }) => {
-    // Render markdown into a hidden styled container, then convert to PDF
+  const downloadPdf = async (note: { title: string; content: string; mode?: Mode }) => {
+    const isFormula = note.mode === 'formula';
     const { default: ReactDOM } = await import('react-dom/client');
     const container = document.createElement('div');
-    container.style.cssText = 'position:fixed;left:-99999px;top:0;width:780px;background:#ffffff;color:#0f172a;padding:48px 56px;font-family:Georgia,"Times New Roman",serif;font-size:13.5px;line-height:1.55;';
+    container.style.cssText = 'position:fixed;left:-99999px;top:0;width:820px;background:#ffffff;color:#0f172a;padding:36px 40px;font-family:Georgia,"Times New Roman",serif;font-size:13px;line-height:1.5;';
     container.className = 'short-notes-pdf-export';
     document.body.appendChild(container);
 
     const root = ReactDOM.createRoot(container);
     root.render(
-      <div className="prose prose-sm max-w-none" style={{ color: '#0f172a' }}>
+      <div style={{ color: '#0f172a' }}>
         <style>{`
           .short-notes-pdf-export h1{font-size:22px;font-weight:800;border-bottom:2px solid #0f172a;padding-bottom:6px;margin:0 0 14px;}
-          .short-notes-pdf-export h2{font-size:17px;font-weight:700;color:#1e3a8a;margin:18px 0 8px;border-left:4px solid #1e3a8a;padding-left:8px;}
-          .short-notes-pdf-export h3{font-size:14.5px;font-weight:700;color:#334155;margin:12px 0 6px;}
-          .short-notes-pdf-export p{margin:6px 0;}
-          .short-notes-pdf-export ul,.short-notes-pdf-export ol{margin:6px 0 6px 22px;}
-          .short-notes-pdf-export li{margin:3px 0;}
+          .short-notes-pdf-export h2{font-size:16px;font-weight:700;color:#1e3a8a;margin:14px 0 6px;}
+          .short-notes-pdf-export h3{font-size:14px;font-weight:700;color:#334155;margin:10px 0 4px;}
+          .short-notes-pdf-export p{margin:4px 0;}
+          .short-notes-pdf-export ul,.short-notes-pdf-export ol{margin:4px 0 4px 22px;}
+          .short-notes-pdf-export li{margin:2px 0;}
           .short-notes-pdf-export strong{color:#7c2d12;}
-          .short-notes-pdf-export blockquote{border-left:3px solid #f59e0b;background:#fffbeb;padding:6px 10px;margin:8px 0;color:#78350f;font-style:italic;}
-          .short-notes-pdf-export table{border-collapse:collapse;width:100%;margin:8px 0;font-size:12.5px;}
-          .short-notes-pdf-export th,.short-notes-pdf-export td{border:1px solid #cbd5e1;padding:5px 8px;text-align:left;}
+          .short-notes-pdf-export blockquote{border-left:3px solid #f59e0b;background:#fffbeb;padding:5px 10px;margin:6px 0;color:#78350f;font-style:italic;}
+          .short-notes-pdf-export table{border-collapse:collapse;width:100%;margin:6px 0;font-size:12px;}
+          .short-notes-pdf-export th,.short-notes-pdf-export td{border:1px solid #cbd5e1;padding:4px 7px;text-align:left;vertical-align:top;}
           .short-notes-pdf-export th{background:#e2e8f0;font-weight:700;}
           .short-notes-pdf-export code{background:#f1f5f9;padding:1px 4px;border-radius:3px;font-size:12px;}
+          .short-notes-pdf-export .pdf-card{break-inside:avoid;page-break-inside:avoid;border:1px solid #cbd5e1;border-radius:10px;padding:10px 12px;margin:8px 0;background:#ffffff;}
+          .short-notes-pdf-export .pdf-card .pdf-card-label{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;font-weight:700;}
+          .short-notes-pdf-export .pdf-card .pdf-card-title{font-size:14px;font-weight:800;color:#0f172a;margin:0 0 4px;}
+          .short-notes-pdf-export .pdf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+          .short-notes-pdf-export .pdf-card.k-formula{background:#f5f3ff;border-left:4px solid #7c3aed;}
+          .short-notes-pdf-export .pdf-card.k-concept{background:#eff6ff;border-left:4px solid #2563eb;}
+          .short-notes-pdf-export .pdf-card.k-definition{background:#f0f9ff;border-left:4px solid #0ea5e9;}
+          .short-notes-pdf-export .pdf-card.k-law{background:#eef2ff;border-left:4px solid #4f46e5;}
+          .short-notes-pdf-export .pdf-card.k-reaction{background:#fff7ed;border-left:4px solid #ea580c;}
+          .short-notes-pdf-export .pdf-card.k-comparison{background:#ecfeff;border-left:4px solid #06b6d4;}
+          .short-notes-pdf-export .pdf-card.k-quickfact{background:#fffbeb;border-left:4px solid #f59e0b;}
+          .short-notes-pdf-export .pdf-card.k-exception{background:#fff1f2;border-left:4px solid #f43f5e;}
+          .short-notes-pdf-export .pdf-card.k-trick{background:#fdf4ff;border-left:4px solid #d946ef;}
+          .short-notes-pdf-export .pdf-card.k-revision{background:#ecfdf5;border-left:4px solid #10b981;}
+          .short-notes-pdf-export .pdf-hero{border:1px solid #cbd5e1;border-radius:12px;padding:14px 16px;margin-bottom:12px;background:linear-gradient(135deg,#eff6ff,#ffffff);}
+          .short-notes-pdf-export .pdf-hero .pdf-hero-eyebrow{font-size:10px;letter-spacing:.2em;color:#2563eb;font-weight:700;text-transform:uppercase;}
+          .short-notes-pdf-export .pdf-hero h1{border:none;margin:4px 0 0;padding:0;font-size:24px;}
+          .short-notes-pdf-export .pdf-revision-title{display:flex;align-items:center;gap:6px;font-size:16px;font-weight:800;color:#065f46;margin:14px 0 6px;border-top:2px dashed #10b981;padding-top:8px;}
         `}</style>
-        <ReactMarkdown>{note.content}</ReactMarkdown>
+        {isFormula ? (
+          <ReactMarkdown>{note.content}</ReactMarkdown>
+        ) : (
+          <PdfCardsRender markdown={note.content} />
+        )}
       </div>
     );
 
-    // wait a tick for render
-    await new Promise((r) => setTimeout(r, 250));
+    await new Promise((r) => setTimeout(r, 300));
 
     try {
       await (html2pdf() as any)
         .set({
-          margin: [10, 10, 12, 10],
+          margin: [8, 8, 10, 8],
           filename: `${note.title} - short notes.pdf`,
           image: { type: 'jpeg', quality: 0.95 },
           html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
           jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+          pagebreak: { mode: ['css', 'legacy'], avoid: '.pdf-card' },
         })
         .from(container)
         .save();
