@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { useToast } from '@/hooks/use-toast';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
 import { extractPdfText, extractPdfPagesAsImages } from '@/lib/pdfExtract';
+import NotesRenderer from './NotesRenderer';
 
 type Intensity = 'quick' | 'standard' | 'detailed' | 'ultra';
 
