@@ -418,9 +418,13 @@ const ShortNotes = () => {
               </div>
             )}
           </div>
-          <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-display prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-table:text-foreground">
-            <ReactMarkdown>{generated || '_Streaming..._'}</ReactMarkdown>
-          </div>
+          {mode === 'formula' ? (
+            <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:font-display prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-table:text-foreground">
+              <ReactMarkdown>{generated || '_Streaming..._'}</ReactMarkdown>
+            </div>
+          ) : (
+            <NotesRenderer markdown={generated} />
+          )}
         </motion.div>
       )}
 
