@@ -146,7 +146,7 @@ serve(async (req) => {
       text:
         mode === "formula"
           ? `\nNow output the COMPLETE formula sheet in Markdown. Cover EVERY formula and constant from the chapter. No prose — only formula reference style.`
-          : `\nNow output the complete short notes in Markdown.${hasRef ? " REMEMBER: the format/style MUST visually mirror the reference sample exactly — same headings, bullets, arrows, abbreviations, layout pattern and density. The student should not be able to tell who wrote which one." : ""}`,
+          : `\nNow output the complete BOX-BASED short notes in Markdown. STRICT RULES: one "# Chapter" H1, then ONLY "## <emoji> ..." card sections from the allowed list (📘 📖 🧮 📜 🧪 📊 ⚡ ⚠️ 🧠 🏆). NEVER write content outside an H2 card. NEVER use H3/H4 as dividers. Comparisons MUST be tables. End with multiple "## 🏆 Last-Minute Revision — …" cards.${hasRef ? " The in-card writing style (density, arrows, abbreviations, formula framing) MUST mirror the reference sample — but the H2 card scaffolding stays exactly as specified." : ""}`,
     });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
