@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { useLocalStorage } from '@/hooks/useLocalStorage';
-import { getLocalDateStr } from '@/lib/utils';
 
 export interface Coupon {
   code: string;
@@ -30,26 +29,17 @@ function makeCode() {
 export default function CouponCenter({ onRedeem }: { onRedeem: (coins: number, source: string) => void }) {
   const [coupons, setCoupons] = useLocalStorage<Coupon[]>('studyflow-coupons', []);
   const [usedPromos, setUsedPromos] = useLocalStorage<string[]>('studyflow-coupons-promos', []);
-  const [lastGen, setLastGen] = useLocalStorage<string>('studyflow-coupon-last-gen', '');
   const [input, setInput] = useState('');
   const [amount, setAmount] = useState('100');
   const [copied, setCopied] = useState<string | null>(null);
 
-  const today = getLocalDateStr();
-  const canGenerate = lastGen !== today;
-
   const generate = () => {
-    if (!canGenerate) {
-      toast.error('You already claimed today\'s free coupon. Come back tomorrow!');
-      return;
-    }
     const coins = Math.floor(Number(amount));
     if (!Number.isFinite(coins) || coins < 1) { toast.error('Enter a valid coin amount.'); return; }
-    if (coins > 1000) { toast.error('Max 1000 coins per coupon.'); return; }
+    if (coins > 100000) { toast.error('Max 1,00,000 coins per coupon.'); return; }
     const coupon: Coupon = { code: makeCode(), coins, createdAt: new Date().toISOString(), redeemed: false };
     setCoupons((prev) => [coupon, ...prev]);
-    setLastGen(today);
-    toast.success(`Coupon generated: ${coupon.code} (${coins} coins)`);
+    toast.success(`Coupon generated: ${coupon.code} (${coins.toLocaleString()} coins)`);
   };
 
 
@@ -93,7 +83,7 @@ export default function CouponCenter({ onRedeem }: { onRedeem: (coins: number, s
         <Ticket className="w-5 h-5 text-amber-600 dark:text-amber-400" />
         <div className="flex-1 min-w-0">
           <div className="font-semibold leading-tight">Coupon Center</div>
-          <div className="text-xs text-muted-foreground">Generate a free coupon daily or redeem a code for bonus coins.</div>
+          <div className="text-xs text-muted-foreground">Generate unlimited free coupons and redeem codes for bonus coins.</div>
         </div>
       </div>
 
@@ -115,16 +105,16 @@ export default function CouponCenter({ onRedeem }: { onRedeem: (coins: number, s
           <Input
             type="number"
             min={1}
-            max={1000}
+            max={100000}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Coins"
             aria-label="Coupon coin amount"
             className="sm:w-32"
           />
-          <Button variant="outline" onClick={generate} disabled={!canGenerate} className="flex-1">
+          <Button variant="outline" onClick={generate} className="flex-1">
             <Gift className="w-4 h-4 mr-1.5" />
-            {canGenerate ? 'Generate Free Coupon' : 'Claimed today — back tomorrow'}
+            Generate Free Coupon
           </Button>
 
         </div>
@@ -159,7 +149,7 @@ export default function CouponCenter({ onRedeem }: { onRedeem: (coins: number, s
 
         {active.length === 0 && (
           <div className="text-xs text-muted-foreground text-center py-1">
-            No active coupons. Generate one free every day 🎁
+            No active coupons. Generate as many as you want 🎁
           </div>
         )}
       </CardContent>
