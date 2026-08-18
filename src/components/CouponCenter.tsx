@@ -106,16 +106,16 @@ export default function CouponCenter({ onRedeem }: { onRedeem: (coins: number, s
           <Input
             type="number"
             min={1}
-            max={1000}
+            max={100000}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Coins"
             aria-label="Coupon coin amount"
             className="sm:w-32"
           />
-          <Button variant="outline" onClick={generate} disabled={!canGenerate} className="flex-1">
+          <Button variant="outline" onClick={generate} className="flex-1">
             <Gift className="w-4 h-4 mr-1.5" />
-            {canGenerate ? 'Generate Free Coupon' : 'Claimed today — back tomorrow'}
+            Generate Free Coupon
           </Button>
 
         </div>
