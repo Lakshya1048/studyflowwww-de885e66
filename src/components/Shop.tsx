@@ -65,6 +65,9 @@ export default function Shop() {
         </div>
       </header>
 
+      <CouponCenter onRedeem={(coins, source) => eco.addCoins(coins, source)} />
+
+
       {/* active power-ups bar */}
       {eco.activePowerUps.length > 0 && (
         <Card>
