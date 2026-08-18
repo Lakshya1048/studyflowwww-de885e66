@@ -111,11 +111,22 @@ export default function CouponCenter({ onRedeem }: { onRedeem: (coins: number, s
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch gap-2">
+          <Input
+            type="number"
+            min={1}
+            max={1000}
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="Coins"
+            aria-label="Coupon coin amount"
+            className="sm:w-32"
+          />
           <Button variant="outline" onClick={generate} disabled={!canGenerate} className="flex-1">
             <Gift className="w-4 h-4 mr-1.5" />
             {canGenerate ? 'Generate Free Coupon' : 'Claimed today — back tomorrow'}
           </Button>
+
         </div>
 
         <AnimatePresence initial={false}>
