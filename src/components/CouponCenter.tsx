@@ -32,6 +32,7 @@ export default function CouponCenter({ onRedeem }: { onRedeem: (coins: number, s
   const [usedPromos, setUsedPromos] = useLocalStorage<string[]>('studyflow-coupons-promos', []);
   const [lastGen, setLastGen] = useLocalStorage<string>('studyflow-coupon-last-gen', '');
   const [input, setInput] = useState('');
+  const [amount, setAmount] = useState('100');
   const [copied, setCopied] = useState<string | null>(null);
 
   const today = getLocalDateStr();
@@ -42,12 +43,15 @@ export default function CouponCenter({ onRedeem }: { onRedeem: (coins: number, s
       toast.error('You already claimed today\'s free coupon. Come back tomorrow!');
       return;
     }
-    const coins = [50, 75, 100, 150, 250][Math.floor(Math.random() * 5)];
+    const coins = Math.floor(Number(amount));
+    if (!Number.isFinite(coins) || coins < 1) { toast.error('Enter a valid coin amount.'); return; }
+    if (coins > 1000) { toast.error('Max 1000 coins per coupon.'); return; }
     const coupon: Coupon = { code: makeCode(), coins, createdAt: new Date().toISOString(), redeemed: false };
     setCoupons((prev) => [coupon, ...prev]);
     setLastGen(today);
     toast.success(`Coupon generated: ${coupon.code} (${coins} coins)`);
   };
+
 
   const redeem = () => {
     const code = input.trim().toUpperCase();
