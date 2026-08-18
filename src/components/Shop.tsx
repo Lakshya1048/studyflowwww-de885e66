@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useEconomy } from '@/hooks/useEconomy';
 import { rankById, rankIndex, RARITY_STYLE, type BoxReward } from '@/lib/economy';
+import CouponCenter from '@/components/CouponCenter';
 
 function CoinPill({ amount, className = '' }: { amount: number; className?: string }) {
   return (
@@ -64,6 +65,9 @@ export default function Shop() {
           </Button>
         </div>
       </header>
+
+      <CouponCenter onRedeem={(coins, source) => eco.addCoins(coins, source)} />
+
 
       {/* active power-ups bar */}
       {eco.activePowerUps.length > 0 && (
