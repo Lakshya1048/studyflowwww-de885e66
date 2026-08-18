@@ -83,7 +83,7 @@ export default function CouponCenter({ onRedeem }: { onRedeem: (coins: number, s
         <Ticket className="w-5 h-5 text-amber-600 dark:text-amber-400" />
         <div className="flex-1 min-w-0">
           <div className="font-semibold leading-tight">Coupon Center</div>
-          <div className="text-xs text-muted-foreground">Generate a free coupon daily or redeem a code for bonus coins.</div>
+          <div className="text-xs text-muted-foreground">Generate unlimited free coupons and redeem codes for bonus coins.</div>
         </div>
       </div>
 
