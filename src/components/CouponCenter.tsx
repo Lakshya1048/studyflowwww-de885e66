@@ -149,7 +149,7 @@ export default function CouponCenter({ onRedeem }: { onRedeem: (coins: number, s
 
         {active.length === 0 && (
           <div className="text-xs text-muted-foreground text-center py-1">
-            No active coupons. Generate one free every day 🎁
+            No active coupons. Generate as many as you want 🎁
           </div>
         )}
       </CardContent>
